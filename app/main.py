@@ -25,6 +25,7 @@ from __future__ import annotations
 
 import hashlib
 import logging
+import time
 import uuid
 from pathlib import Path
 from typing import Literal
@@ -38,8 +39,10 @@ from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 
 from app.auth import require_identity
+from app.cache import brief_fingerprint, gen_cache_key, get_cache, load_cached
 from app.config import get_settings
 from app.generate.pipeline import run_generation
+from app.metrics import emit_generation_metric
 from app.ingest.brief_builder import build_brief
 from app.llm.gemini import GeminiClient, LLMError, LLMNotConfigured
 from app.schemas import BriefsResponse, GenerateRequest, TemplateModel, UploadResponse
@@ -179,13 +182,30 @@ async def internal_parse(request: Request):
 
 
 def _generate_job(tenant, pair_id, request_id, sender, receiver, prompt, template):
-    """Heavy draft->verify->repair work, off the request path (Pub/Sub + worker in prod)."""
+    """Heavy draft->verify->repair work, off the request path (Pub/Sub + worker in prod).
+    Checks the result cache first (skips the model on a hit), then emits a metrics row."""
+    cache = get_cache()
+    ckey = gen_cache_key(tenant, pair_id, prompt, template.id, brief_fingerprint(sender, receiver))
+    t0 = time.monotonic()
     try:
+        cached = load_cached(cache, ckey)
+        if cached is not None:
+            cached.meta.request_id = request_id  # re-stamp so storage/poll keys match this job
+            store.save_output(tenant, pair_id, cached)
+            store.set_job(tenant, pair_id, request_id, "done", "article ready (cache hit)")
+            log.info("cache hit %s tenant=%s pair=%s", request_id, tenant, pair_id)
+            emit_generation_metric(tenant, pair_id, cached,
+                                   latency_ms=int((time.monotonic() - t0) * 1000), cached=True)
+            return
+
         result = run_generation(pair_id, sender, receiver, prompt, template, request_id, llm=llm)
         store.save_output(tenant, pair_id, result)
         store.set_job(tenant, pair_id, request_id, "done", "article ready")
+        cache.set(ckey, result.model_dump_json(), get_settings().cache_ttl_seconds)
         log.info("generated %s tenant=%s pair=%s (%d tok, $%.4f)",
                  request_id, tenant, pair_id, result.meta.total_tokens, result.meta.cost_usd)
+        emit_generation_metric(tenant, pair_id, result,
+                               latency_ms=int((time.monotonic() - t0) * 1000), cached=False)
     except LLMNotConfigured as e:
         store.set_job(tenant, pair_id, request_id, "error", str(e))
     except LLMError as e:

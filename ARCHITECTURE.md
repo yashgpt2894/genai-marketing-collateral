@@ -25,8 +25,8 @@ flowchart TB
   GEN -- "Vertex AI service account, no key" --> MODEL["Gemini 2.5 Pro / Flash"]
   GEN --> FS
 
-  FS -. "metrics, roadmap" .-> BQ[("BigQuery")]
-  BQ -.-> LOOK["Looker dashboard, roadmap"]
+  FS -. "metrics, config-gated" .-> BQ[("BigQuery")]
+  BQ -.-> LOOK["Looker dashboard, config-gated"]
 ```
 
 Cross-cutting: **Model Armor** · per-tenant-ready **CMEK** · **EU residency** · **VPC-SC** ·
@@ -63,6 +63,9 @@ where the JSON is consumed. A formal approval gate enters only if we add a publi
 | Retrieval | long-context + (prod) context caching; structured facts in Firestore | bounded 2-company corpus |
 | Storage | **Cloud Storage** (CMEK) · **Firestore** | PDFs/assets · briefs/jobs/outputs |
 | Cost | per-generation token + USD on `meta` | per-model pricing |
+| Cache | **Memorystore (Redis)** — fail-open, config-gated | a cache hit skips the model call |
+| Metrics | **BigQuery** row per generation → Looker Studio (config-gated) | confidence/faithfulness/cost per tenant |
+| Eval | golden-set harness (offline + `--live`) | faithfulness/constraint regression gate |
 | Governance | Model Armor · CMEK · VPC-SC · Secret Manager · IAM | security + responsible AI |
 | CI/CD | **Cloud Build** + **Terraform** (`infra/`) | full stack as code, EU |
 
@@ -108,10 +111,12 @@ Postman can also import `openapi.json` (or the live `/openapi.json`) to generate
 ## Roadmap (what's deliberately deferred)
 - **Multi-tenancy:** derive `tenant_id` from the verified token claim (not a header); per-tenant
   CMEK + Firestore partition + rate/cost budgets. *(Plumbing already in place.)*
-- **Org dashboard:** export per-generation metrics (confidence, faithfulness, cost) to BigQuery →
-  Looker Studio, row-scoped by tenant. *(Backbone is a small `list_outputs` + `/sessions` add.)*
+- **Org dashboard:** the per-generation **BigQuery metrics export is built (config-gated)** —
+  `enable_metrics=true` streams a row per generation; what remains is pointing **Looker Studio** at the
+  table with per-tenant row filters.
 - **Agentic features → Agent Engine:** tools (live research, image sourcing), multi-step, HITL.
-- **Render-and-measure** layout validation; richer eval (golden set, online auto-raters).
+- **Render-and-measure** layout validation; the **golden-set eval harness is built**
+  (`app.eval.harness`, offline + `--live`) — next is online auto-raters + a larger labelled set.
 
 ---
 

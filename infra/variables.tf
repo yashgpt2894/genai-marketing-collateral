@@ -40,3 +40,28 @@ variable "auth_audience" {
   default     = ""
   description = "Expected audience for Google ID tokens (the service URL). Empty = skip audience check."
 }
+
+# ── Optional, off-by-default add-ons (the artifact ships these wired, gated) ──
+variable "enable_cache" {
+  type        = bool
+  default     = false
+  description = "Provision Memorystore (Redis) + a Serverless VPC connector and point the API at it (CACHE_BACKEND=redis)."
+}
+
+variable "enable_metrics" {
+  type        = bool
+  default     = false
+  description = "Provision the BigQuery metrics dataset/table and stream one row per generation (METRICS_BACKEND=bigquery)."
+}
+
+variable "bq_dataset" {
+  type        = string
+  default     = "collateral"
+  description = "BigQuery dataset id for generation metrics (used when enable_metrics=true)."
+}
+
+variable "bq_table" {
+  type        = string
+  default     = "generations"
+  description = "BigQuery table id for generation metrics."
+}

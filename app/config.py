@@ -2,10 +2,10 @@
 Configuration (pydantic-settings). Everything is environment-overridable; no
 secrets live in code. Copy .env.example -> .env and fill in your key.
 
-MODEL IDS: the defaults below are the Gemini 3.x family this prototype targets.
-Model identifiers move fast — confirm the exact strings in the Google Cloud /
-AI Studio console the day you run this, and override via .env if they differ.
-A wrong id surfaces as a clear 4xx from the API call, not a silent failure.
+MODEL IDS: the defaults below are the Gemini 2.5 family (the ids confirmed
+available in the target project). Model identifiers move fast — confirm the exact
+strings in the Google Cloud / AI Studio console the day you run this, and override
+via .env if they differ. A wrong id surfaces as a clear 4xx, not a silent failure.
 """
 from __future__ import annotations
 
@@ -38,9 +38,9 @@ class Settings(BaseSettings):  # type: ignore[misc]
     google_cloud_location: str = Field(default="europe-west1", alias="GOOGLE_CLOUD_LOCATION")
 
     # --- Models (override in .env to match the console) ------------------------
-    model_writer: str = Field(default="gemini-3.1-pro", alias="MODEL_WRITER")        # article quality
-    model_parser: str = Field(default="gemini-3-flash", alias="MODEL_PARSER")        # multimodal PDF
-    model_cheap: str = Field(default="gemini-3.1-flash-lite", alias="MODEL_CHEAP")   # verify / repair / extract
+    model_writer: str = Field(default="gemini-2.5-pro", alias="MODEL_WRITER")     # article quality
+    model_parser: str = Field(default="gemini-2.5-flash", alias="MODEL_PARSER")   # multimodal PDF
+    model_cheap: str = Field(default="gemini-2.5-flash", alias="MODEL_CHEAP")     # verify / repair / extract
 
     # --- Generation knobs ------------------------------------------------------
     writer_temperature: float = Field(default=0.5, alias="WRITER_TEMPERATURE")
@@ -66,6 +66,21 @@ class Settings(BaseSettings):  # type: ignore[misc]
 
     # --- Upload limits --------------------------------------------------------
     max_upload_mb: int = Field(default=10, alias="MAX_UPLOAD_MB")
+
+    # --- Result cache (Memorystore for Redis) — optional, fail-open -----------
+    # When "redis", a cache hit on (tenant, pair, prompt, template, brief-hash)
+    # skips the whole draft->repair->verify path (saves a Gemini call + latency).
+    cache_backend: str = Field(default="none", alias="CACHE_BACKEND")          # "none" | "redis"
+    redis_host: str = Field(default="127.0.0.1", alias="REDIS_HOST")
+    redis_port: int = Field(default=6379, alias="REDIS_PORT")
+    cache_ttl_seconds: int = Field(default=86400, alias="CACHE_TTL_SECONDS")    # 24h
+
+    # --- Metrics export (BigQuery) — optional, fail-open ----------------------
+    # When "bigquery", every generation streams one row (quality + cost) to BQ,
+    # the backbone for the Looker Studio org dashboard.
+    metrics_backend: str = Field(default="none", alias="METRICS_BACKEND")      # "none" | "bigquery"
+    bq_dataset: str = Field(default="collateral", alias="BQ_DATASET")
+    bq_table: str = Field(default="generations", alias="BQ_TABLE")
 
     # --- Versioning stamped on every output (reproducibility) -----------------
     prompt_version: str = Field(default="p1", alias="PROMPT_VERSION")

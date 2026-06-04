@@ -68,9 +68,10 @@ curl "$URL/generate/demo1/<job_id>" -H "Authorization: Bearer $TOKEN"           
 
 ### Tests
 ```bash
-pip install '.[dev]' && pytest      # 27 tests, all offline (no network / no real model)
+pip install '.[dev]' && pytest      # 35 tests, all offline (no network / no real model)
+python -m app.eval.harness          # golden-set eval (offline; add --live for real Gemini quality)
 ```
-constraint engine · offline pipeline (injected fake LLM) · token/cost · async API (TestClient) · messaging.
+constraint engine · offline pipeline (injected fake LLM) · token/cost · async API (TestClient) · messaging · cache · metrics · **eval harness**.
 
 ---
 
@@ -111,8 +112,13 @@ constraint engine · offline pipeline (injected fake LLM) · token/cost · async
 | Cost / observability | token + USD per generation; Cloud Logging/Trace |
 | IaC | **Terraform** (`infra/`), EU region throughout |
 
+**Built, config-gated** (off by default — flip a flag + the matching `infra/` module):
+- **Result cache** — Memorystore (Redis) in front of generation; a hit on (tenant, pair, prompt, template, brief-hash) skips the model call. `app/cache.py` · `CACHE_BACKEND=redis` · `enable_cache=true`.
+- **Metrics → dashboard** — one **BigQuery** row per generation (confidence/faithfulness/cost/latency), the Looker Studio source, row-scoped by tenant. `app/metrics.py` · `METRICS_BACKEND=bigquery` · `enable_metrics=true`.
+- **Eval harness** — golden-set regression gate, offline (hermetic) + `--live` for real Gemini quality. `python -m app.eval.harness` · `evals/`.
+
 *Roadmap:* Vertex AI Search (RAG when a corpus grows) · Agent Engine (if we add tools / a HITL pause) ·
-org dashboard (Looker over BigQuery) · EU-region model residency (model calls currently use the `global` endpoint).
+EU-region model residency (model calls currently use the `global` endpoint).
 
 ---
 
@@ -125,17 +131,20 @@ app/
   schemas.py              # Pydantic wire models + converters
   constraints_core.py     # framework-free constraint & repair engine (unit-tested)
   pricing.py              # per-model token → USD cost
+  cache.py                # Memorystore (Redis) result cache — fail-open, config-gated
+  metrics.py              # BigQuery metrics export — fail-open, config-gated
   messaging.py            # Pub/Sub publish + push-envelope decode (async parse)
   templates_def/          # the layout templates (the hard contract)
   llm/gemini.py           # the only Gemini caller (both auth paths, retries, token usage)
   ingest/                 # parse_pdf.py (PyMuPDF, bytes) · brief_builder.py (multimodal → brief)
   generate/               # context.py · writer.py · layout.py (repair) · pipeline.py (orchestrator)
-  eval/                   # constraint_checks.py · faithfulness.py (injectable judge)
+  eval/                   # constraint_checks.py · faithfulness.py (judge) · harness.py (golden-set eval)
   store/                  # base.py (interface) · local.py (fs) · cloud.py (Firestore + GCS) · get_store()
-infra/                    # Terraform: Cloud Run, GCS·CMEK, Firestore, Pub/Sub, IAM, Vertex SA
+infra/                    # Terraform: Cloud Run, GCS·CMEK, Firestore, Pub/Sub, IAM, Vertex SA (+ gated Redis/BigQuery)
 static/                   # Collateral Studio UI (index.html, styles.css, app.js)
 sample_data/              # make_samples.py + two image-rich sample PDFs
-tests/                    # constraints · offline pipeline · usage/cost · async API · messaging
+evals/                    # golden_cases.json + run_eval.py (eval-harness data + CLI)
+tests/                    # constraints · pipeline · usage/cost · async API · messaging · cache · metrics · eval
 Dockerfile · deploy.sh · ARCHITECTURE.md · DEPLOY.md · openapi.json · postman_collection.json
 ```
 

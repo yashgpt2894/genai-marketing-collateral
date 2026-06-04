@@ -1,0 +1,77 @@
+{
+  "_comment": "Golden set for the generation eval harness (python -m app.eval.harness). Offline runs use a deterministic stand-in; --live measures real Gemini quality on these prompts. Add cases as the product grows.",
+  "min_faithfulness": 0.9,
+  "min_pass_rate": 1.0,
+  "cases": [
+    {
+      "id": "nimbus_vanguard_idle",
+      "template_id": "one_pager_v1",
+      "prompt": "Show how Nimbus AI helps Vanguard Freight cut idle fleet hours and improve on-time delivery. Practical, evidence-led tone.",
+      "sender": {
+        "role": "sender",
+        "name": "Nimbus AI",
+        "industry": "AI logistics software",
+        "offerings": ["real-time route optimization"],
+        "value_props": ["cut idle fleet time", "improve on-time delivery", "deploys on existing telematics"],
+        "pain_points": [],
+        "tone_signals": ["practical", "evidence-led"],
+        "key_stats": ["28% less idle time", "+12 points on-time delivery"],
+        "facts": [
+          {"id": "send.fact.1", "text": "Nimbus AI re-plans routes in real time as orders and traffic shift.", "kind": "offering", "source_page": 1},
+          {"id": "send.fact.2", "text": "At comparable fleets, Nimbus cut idle time by 28% and lifted on-time delivery by 12 points.", "kind": "stat", "source_page": 2},
+          {"id": "send.fact.3", "text": "Nimbus deploys in weeks on a customer's existing telematics stack.", "kind": "value_prop", "source_page": 1}
+        ]
+      },
+      "receiver": {
+        "role": "receiver",
+        "name": "Vanguard Freight",
+        "industry": "road freight logistics",
+        "offerings": ["regional freight delivery"],
+        "value_props": [],
+        "pain_points": ["manual dispatch leaves trucks idle between loads"],
+        "tone_signals": ["pragmatic buyer"],
+        "key_stats": ["480 trucks", "1.9 idle hours per truck per day"],
+        "facts": [
+          {"id": "recv.fact.1", "text": "Vanguard Freight operates 480 trucks across the Benelux.", "kind": "fact", "source_page": 1},
+          {"id": "recv.fact.3", "text": "Manual dispatch leaves each vehicle idle nearly two hours a day.", "kind": "pain_point", "source_page": 1}
+        ],
+        "logo_asset": "recv_logo"
+      }
+    },
+    {
+      "id": "helios_brightway_energy",
+      "template_id": "two_column_v1",
+      "prompt": "Make the case that Helios Energy can cut Brightway Retail's store energy costs without disrupting operations.",
+      "sender": {
+        "role": "sender",
+        "name": "Helios Energy",
+        "industry": "commercial solar + storage",
+        "offerings": ["rooftop solar", "battery storage", "energy management software"],
+        "value_props": ["lower energy bills", "no upfront capex via PPA", "install around store hours"],
+        "pain_points": [],
+        "tone_signals": ["confident", "ROI-focused"],
+        "key_stats": ["up to 35% lower energy spend", "installs in 3 weeks per site"],
+        "facts": [
+          {"id": "send.fact.1", "text": "Helios funds installs through a power-purchase agreement, so customers pay no upfront capex.", "kind": "value_prop", "source_page": 1},
+          {"id": "send.fact.2", "text": "Retail sites on Helios saw up to 35% lower energy spend within the first year.", "kind": "stat", "source_page": 2},
+          {"id": "send.fact.3", "text": "Helios schedules installation around trading hours to avoid disrupting stores.", "kind": "offering", "source_page": 1}
+        ]
+      },
+      "receiver": {
+        "role": "receiver",
+        "name": "Brightway Retail",
+        "industry": "grocery retail chain",
+        "offerings": ["240 grocery stores"],
+        "value_props": [],
+        "pain_points": ["energy is the second-largest operating cost", "refrigeration runs 24/7"],
+        "tone_signals": ["cost-conscious"],
+        "key_stats": ["240 stores", "energy is ~18% of store operating cost"],
+        "facts": [
+          {"id": "recv.fact.1", "text": "Brightway Retail runs 240 grocery stores with 24/7 refrigeration.", "kind": "fact", "source_page": 1},
+          {"id": "recv.fact.2", "text": "Energy is roughly 18% of Brightway's store operating cost.", "kind": "pain_point", "source_page": 1}
+        ],
+        "logo_asset": "recv_logo"
+      }
+    }
+  ]
+}

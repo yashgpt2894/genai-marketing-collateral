@@ -11,6 +11,7 @@ locals {
     "run.googleapis.com", "firestore.googleapis.com", "storage.googleapis.com",
     "pubsub.googleapis.com", "cloudkms.googleapis.com", "aiplatform.googleapis.com",
     "artifactregistry.googleapis.com", "cloudbuild.googleapis.com",
+    "bigquery.googleapis.com", "redis.googleapis.com", "vpcaccess.googleapis.com",
   ]
 }
 
@@ -181,6 +182,31 @@ resource "google_cloud_run_v2_service" "api" {
       env {
         name  = "AUTH_AUDIENCE"
         value = var.auth_audience
+      }
+      # ── optional add-ons (gated) — benign "none"/"" when disabled ──
+      env {
+        name  = "CACHE_BACKEND"
+        value = var.enable_cache ? "redis" : "none"
+      }
+      env {
+        name  = "REDIS_HOST"
+        value = try(google_redis_instance.cache[0].host, "")
+      }
+      env {
+        name  = "METRICS_BACKEND"
+        value = var.enable_metrics ? "bigquery" : "none"
+      }
+      env {
+        name  = "BQ_DATASET"
+        value = var.bq_dataset
+      }
+    }
+
+    dynamic "vpc_access" {
+      for_each = var.enable_cache ? [1] : []
+      content {
+        connector = google_vpc_access_connector.cache[0].id
+        egress    = "PRIVATE_RANGES_ONLY"
       }
     }
   }

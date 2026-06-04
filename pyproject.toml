@@ -24,6 +24,8 @@ cloud = [
     "google-cloud-firestore>=2.16",   # briefs / jobs / outputs
     "google-cloud-storage>=2.16",     # raw PDFs + extracted assets
     "google-cloud-pubsub>=2.21",      # async parse dispatch
+    "google-cloud-bigquery>=3.20",    # generation metrics export (org dashboard)
+    "redis>=5.0",                     # Memorystore result cache
 ]
 
 [build-system]
