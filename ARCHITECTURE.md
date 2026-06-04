@@ -12,21 +12,21 @@ for the model. **Single-tenant** prototype with a clean seam to multi-tenant.
 ```mermaid
 flowchart TB
   CLIENT["curl / thin UI"]
-  AUTH["Auth — Google ID token (Bearer), verified per request"]
+  AUTH["Auth: Google ID token, Bearer<br/>verified per request"]
   CLIENT --> AUTH
-  AUTH --> API["CLOUD RUN · API (FastAPI, stateless)<br/>POST /companies/{pair}/documents<br/>POST /generate → 202 + job_id (poll)"]
+  AUTH --> API["Cloud Run API — FastAPI, stateless<br/>POST /companies/PAIR/documents<br/>POST /generate returns 202 + job_id, then poll"]
 
-  API -- "upload: PDF→GCS, publish job" --> PS["Pub/Sub"]
-  PS --> WORK["Parse worker (Cloud Run, push)<br/>Document AI (+HITL) + Gemini 3.5 Flash"]
-  WORK --> FS[("Firestore — briefs · jobs · outputs")]
-  WORK --> GCS[("Cloud Storage — PDFs · assets · CMEK")]
+  API -- "upload: PDF to GCS, publish job" --> PS["Pub/Sub + DLQ"]
+  PS --> WORK["Parse worker — Cloud Run push<br/>PyMuPDF assets + Gemini 2.5 Flash meaning"]
+  WORK --> FS[("Firestore: briefs, jobs, outputs")]
+  WORK --> GCS[("Cloud Storage: PDFs, assets, CMEK")]
 
-  API -- "generate (async job)" --> GEN["Deterministic pipeline<br/>assemble→draft→map→validate→repair<br/>+ faithfulness + token/cost"]
-  GEN -- "Vertex AI (service account, no key)" --> MODEL["Gemini 3.5 Pro / Flash"]
+  API -- "generate, async job" --> GEN["Deterministic pipeline<br/>assemble, draft, map, validate, repair<br/>+ faithfulness + token/cost"]
+  GEN -- "Vertex AI service account, no key" --> MODEL["Gemini 2.5 Pro / Flash"]
   GEN --> FS
 
-  FS -. "metrics (roadmap)" .-> BQ[("BigQuery")]
-  BQ -. .-> LOOK["Looker dashboard (roadmap)"]
+  FS -. "metrics, roadmap" .-> BQ[("BigQuery")]
+  BQ -. .-> LOOK["Looker dashboard, roadmap"]
 ```
 
 Cross-cutting: **Model Armor** · per-tenant-ready **CMEK** · **EU residency** · **VPC-SC** ·
@@ -36,8 +36,9 @@ Cross-cutting: **Model Armor** · per-tenant-ready **CMEK** · **EU residency** 
 
 ## Request flows
 1. **Upload** `POST /companies/{pair}/documents` (auth) → PDF to GCS → **publish to Pub/Sub**
-   (or in-process locally) → parse worker: **Document AI** (layout/tables/OCR, +HITL on
-   low-confidence fields) + **Gemini 3.5 Flash** (meaning) → typed `CompanyBrief` in Firestore.
+   (or in-process locally) → parse worker: **PyMuPDF** (image/logo asset bytes) +
+   **Gemini 2.5 Flash** (multimodal meaning) → typed `CompanyBrief` in Firestore. **Document AI**
+   (layout/tables/OCR, +HITL on low-confidence) is the managed at-scale swap.
    Idempotent on `(role, filename)`; retries + dead-letter queue. Returns a `job_id`.
 2. **Generate** `POST /generate {pair_id, prompt, template_id}` (auth) → **202 + `job_id`**,
    runs off the request path → grounded, cited draft → mapped to template → constraints
@@ -56,9 +57,9 @@ where the JSON is consumed. A formal approval gate enters only if we add a publi
 | Auth | **Google ID token** (verified in-app) + Cloud Run IAM | every data route requires `Authorization: Bearer <id-token>` |
 | API | **Cloud Run** (FastAPI) | the endpoints; stateless; scale-to-zero |
 | Async parse | **Pub/Sub** + **Cloud Run** push worker | decoupled, idempotent, retried + DLQ |
-| Parsing | **Document AI** (+HITL) + **Gemini 3.5 Flash** | layout/tables/OCR + multimodal meaning |
+| Parsing | **PyMuPDF** + **Gemini 2.5 Flash** (Document AI = managed scale swap) | image/logo assets + multimodal meaning |
 | Generation | deterministic pipeline on Cloud Run | assemble → draft → map → validate → repair |
-| Model | **Vertex AI** — Gemini 3.5 Pro / Flash | via the Cloud Run service account (no API key) |
+| Model | **Vertex AI** — Gemini 2.5 Pro / Flash | via the Cloud Run service account (no API key) |
 | Retrieval | long-context + (prod) context caching; structured facts in Firestore | bounded 2-company corpus |
 | Storage | **Cloud Storage** (CMEK) · **Firestore** | PDFs/assets · briefs/jobs/outputs |
 | Cost | per-generation token + USD on `meta` | per-model pricing |
@@ -95,7 +96,7 @@ where the `HTTPBearer` security scheme is attached to every protected route.
 - **Layout** = hard limits enforced **in code** (+ render-and-measure as the production truth).
 - **Tenancy = single-tenant prototype** (`tenant` defaults to `default`); the store/routes are
   already tenant-keyed, so multi-tenant is a config + auth-claim change, not a refactor.
-- **Models:** Gemini **3.5 Pro** (writer), **3.5 Flash** (parse / verify / repair).
+- **Models:** Gemini **2.5 Pro** (writer), **2.5 Flash** (parse / verify / repair).
 
 ---
 
