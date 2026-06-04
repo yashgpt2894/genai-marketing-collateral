@@ -26,7 +26,7 @@ flowchart TB
   GEN --> FS
 
   FS -. "metrics, roadmap" .-> BQ[("BigQuery")]
-  BQ -. .-> LOOK["Looker dashboard, roadmap"]
+  BQ -.-> LOOK["Looker dashboard, roadmap"]
 ```
 
 Cross-cutting: **Model Armor** · per-tenant-ready **CMEK** · **EU residency** · **VPC-SC** ·
