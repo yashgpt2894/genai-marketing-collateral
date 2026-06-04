@@ -79,8 +79,13 @@ where the JSON is consumed. A formal approval gate enters only if we add a publi
 | `GET  /companies/{pair}` · `GET /templates` · `GET /assets/{pair}/{id}` | Bearer | — | briefs · templates · image |
 | `GET  /healthz` · `GET /` | public | — | liveness · UI |
 
-Full machine-readable spec is the app's auto-generated **OpenAPI** at `/openapi.json` (`/docs`),
-where the `HTTPBearer` security scheme is attached to every protected route.
+Full machine-readable spec is the app's auto-generated **OpenAPI** at `/openapi.json` (interactive
+Swagger UI at `/docs`), where the `HTTPBearer` security scheme is attached to every protected route.
+
+**Spec artifacts in the repo:** a committed snapshot lives in **`openapi.json`**, and
+**`postman_collection.json`** imports straight into Postman — base URL preset, Bearer auth wired
+(for `AUTH_MODE=google`), and a test script that auto-captures `job_id` so the poll request just runs.
+Postman can also import `openapi.json` (or the live `/openapi.json`) to generate a collection directly.
 
 ---
 
