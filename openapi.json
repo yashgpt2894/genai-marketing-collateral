@@ -1,0 +1,978 @@
+{
+    "openapi": "3.1.0",
+    "info": {
+        "title": "Generative Marketing Collateral",
+        "version": "0.2.0"
+    },
+    "paths": {
+        "/healthz": {
+            "get": {
+                "summary": "Healthz",
+                "operationId": "healthz_healthz_get",
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {}
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/templates": {
+            "get": {
+                "summary": "Templates",
+                "operationId": "templates_templates_get",
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "items": {
+                                        "$ref": "#/components/schemas/TemplateModel"
+                                    },
+                                    "type": "array",
+                                    "title": "Response Templates Templates Get"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "HTTPBearer": []
+                    }
+                ]
+            }
+        },
+        "/companies/{pair_id}": {
+            "get": {
+                "summary": "Get Companies",
+                "operationId": "get_companies_companies__pair_id__get",
+                "security": [
+                    {
+                        "HTTPBearer": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "pair_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "title": "Pair Id"
+                        }
+                    },
+                    {
+                        "name": "x-tenant-id",
+                        "in": "header",
+                        "required": false,
+                        "schema": {
+                            "anyOf": [
+                                {
+                                    "type": "string"
+                                },
+                                {
+                                    "type": "null"
+                                }
+                            ],
+                            "title": "X-Tenant-Id"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/BriefsResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/companies/{pair_id}/documents": {
+            "post": {
+                "summary": "Upload Documents",
+                "operationId": "upload_documents_companies__pair_id__documents_post",
+                "security": [
+                    {
+                        "HTTPBearer": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "pair_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "title": "Pair Id"
+                        }
+                    },
+                    {
+                        "name": "x-tenant-id",
+                        "in": "header",
+                        "required": false,
+                        "schema": {
+                            "anyOf": [
+                                {
+                                    "type": "string"
+                                },
+                                {
+                                    "type": "null"
+                                }
+                            ],
+                            "title": "X-Tenant-Id"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "multipart/form-data": {
+                            "schema": {
+                                "$ref": "#/components/schemas/Body_upload_documents_companies__pair_id__documents_post"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/UploadResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/jobs/{pair_id}/{job_id}": {
+            "get": {
+                "summary": "Job Status",
+                "operationId": "job_status_jobs__pair_id___job_id__get",
+                "security": [
+                    {
+                        "HTTPBearer": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "pair_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "title": "Pair Id"
+                        }
+                    },
+                    {
+                        "name": "job_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "title": "Job Id"
+                        }
+                    },
+                    {
+                        "name": "x-tenant-id",
+                        "in": "header",
+                        "required": false,
+                        "schema": {
+                            "anyOf": [
+                                {
+                                    "type": "string"
+                                },
+                                {
+                                    "type": "null"
+                                }
+                            ],
+                            "title": "X-Tenant-Id"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {}
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/generate": {
+            "post": {
+                "summary": "Generate",
+                "description": "Accept the job and return a job_id immediately \u2014 never blocks on the model.\nPoll GET /generate/{pair_id}/{job_id} for the result. Send an Idempotency-Key\nheader to make a retried POST return the same job instead of a duplicate.",
+                "operationId": "generate_generate_post",
+                "security": [
+                    {
+                        "HTTPBearer": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "Idempotency-Key",
+                        "in": "header",
+                        "required": false,
+                        "schema": {
+                            "anyOf": [
+                                {
+                                    "type": "string"
+                                },
+                                {
+                                    "type": "null"
+                                }
+                            ],
+                            "title": "Idempotency-Key"
+                        }
+                    },
+                    {
+                        "name": "x-tenant-id",
+                        "in": "header",
+                        "required": false,
+                        "schema": {
+                            "anyOf": [
+                                {
+                                    "type": "string"
+                                },
+                                {
+                                    "type": "null"
+                                }
+                            ],
+                            "title": "X-Tenant-Id"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/GenerateRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "202": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {}
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/generate/{pair_id}/{job_id}": {
+            "get": {
+                "summary": "Generate Status",
+                "description": "Poll a generation job. When done, returns the full ArticleJSON under `result`.",
+                "operationId": "generate_status_generate__pair_id___job_id__get",
+                "security": [
+                    {
+                        "HTTPBearer": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "pair_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "title": "Pair Id"
+                        }
+                    },
+                    {
+                        "name": "job_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "title": "Job Id"
+                        }
+                    },
+                    {
+                        "name": "x-tenant-id",
+                        "in": "header",
+                        "required": false,
+                        "schema": {
+                            "anyOf": [
+                                {
+                                    "type": "string"
+                                },
+                                {
+                                    "type": "null"
+                                }
+                            ],
+                            "title": "X-Tenant-Id"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {}
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/assets/{pair_id}/{asset_id}": {
+            "get": {
+                "summary": "Get Asset",
+                "description": "Serve an image/logo extracted during parsing (id without extension).",
+                "operationId": "get_asset_assets__pair_id___asset_id__get",
+                "security": [
+                    {
+                        "HTTPBearer": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "pair_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "title": "Pair Id"
+                        }
+                    },
+                    {
+                        "name": "asset_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "title": "Asset Id"
+                        }
+                    },
+                    {
+                        "name": "x-tenant-id",
+                        "in": "header",
+                        "required": false,
+                        "schema": {
+                            "anyOf": [
+                                {
+                                    "type": "string"
+                                },
+                                {
+                                    "type": "null"
+                                }
+                            ],
+                            "title": "X-Tenant-Id"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {}
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/": {
+            "get": {
+                "summary": "Index",
+                "operationId": "index__get",
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {}
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    },
+    "components": {
+        "schemas": {
+            "BlockSpecModel": {
+                "properties": {
+                    "id": {
+                        "type": "string",
+                        "title": "Id"
+                    },
+                    "type": {
+                        "$ref": "#/components/schemas/BlockType"
+                    },
+                    "min_words": {
+                        "type": "integer",
+                        "title": "Min Words"
+                    },
+                    "max_words": {
+                        "type": "integer",
+                        "title": "Max Words"
+                    },
+                    "image_placeholder": {
+                        "type": "boolean",
+                        "title": "Image Placeholder",
+                        "default": false
+                    },
+                    "theme_color": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Theme Color"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "id",
+                    "type",
+                    "min_words",
+                    "max_words"
+                ],
+                "title": "BlockSpecModel"
+            },
+            "BlockType": {
+                "type": "string",
+                "enum": [
+                    "heading",
+                    "subheading",
+                    "body",
+                    "caption",
+                    "cta"
+                ],
+                "title": "BlockType"
+            },
+            "Body_upload_documents_companies__pair_id__documents_post": {
+                "properties": {
+                    "role": {
+                        "type": "string",
+                        "enum": [
+                            "sender",
+                            "receiver"
+                        ],
+                        "title": "Role"
+                    },
+                    "files": {
+                        "items": {
+                            "type": "string",
+                            "contentMediaType": "application/octet-stream"
+                        },
+                        "type": "array",
+                        "title": "Files"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "role",
+                    "files"
+                ],
+                "title": "Body_upload_documents_companies__pair_id__documents_post"
+            },
+            "BriefsResponse": {
+                "properties": {
+                    "pair_id": {
+                        "type": "string",
+                        "title": "Pair Id"
+                    },
+                    "sender": {
+                        "anyOf": [
+                            {
+                                "$ref": "#/components/schemas/CompanyBrief"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ]
+                    },
+                    "receiver": {
+                        "anyOf": [
+                            {
+                                "$ref": "#/components/schemas/CompanyBrief"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ]
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "pair_id"
+                ],
+                "title": "BriefsResponse"
+            },
+            "CompanyBrief": {
+                "properties": {
+                    "role": {
+                        "type": "string",
+                        "enum": [
+                            "sender",
+                            "receiver"
+                        ],
+                        "title": "Role"
+                    },
+                    "name": {
+                        "type": "string",
+                        "title": "Name"
+                    },
+                    "industry": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Industry"
+                    },
+                    "offerings": {
+                        "items": {
+                            "type": "string"
+                        },
+                        "type": "array",
+                        "title": "Offerings"
+                    },
+                    "value_props": {
+                        "items": {
+                            "type": "string"
+                        },
+                        "type": "array",
+                        "title": "Value Props"
+                    },
+                    "pain_points": {
+                        "items": {
+                            "type": "string"
+                        },
+                        "type": "array",
+                        "title": "Pain Points"
+                    },
+                    "tone_signals": {
+                        "items": {
+                            "type": "string"
+                        },
+                        "type": "array",
+                        "title": "Tone Signals"
+                    },
+                    "key_stats": {
+                        "items": {
+                            "type": "string"
+                        },
+                        "type": "array",
+                        "title": "Key Stats"
+                    },
+                    "facts": {
+                        "items": {
+                            "$ref": "#/components/schemas/Fact"
+                        },
+                        "type": "array",
+                        "title": "Facts"
+                    },
+                    "logo_asset": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Logo Asset"
+                    },
+                    "images": {
+                        "items": {
+                            "$ref": "#/components/schemas/ImageAsset"
+                        },
+                        "type": "array",
+                        "title": "Images"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "role",
+                    "name"
+                ],
+                "title": "CompanyBrief",
+                "description": "The distilled, reusable, source-tagged representation of one company."
+            },
+            "Fact": {
+                "properties": {
+                    "id": {
+                        "type": "string",
+                        "title": "Id",
+                        "description": "stable id, e.g. 'recv.pain.2' \u2014 referenced by article citations"
+                    },
+                    "text": {
+                        "type": "string",
+                        "title": "Text"
+                    },
+                    "kind": {
+                        "type": "string",
+                        "enum": [
+                            "offering",
+                            "value_prop",
+                            "pain_point",
+                            "stat",
+                            "tone",
+                            "fact"
+                        ],
+                        "title": "Kind",
+                        "default": "fact"
+                    },
+                    "source_page": {
+                        "anyOf": [
+                            {
+                                "type": "integer"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Source Page",
+                        "description": "page in the source PDF"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "id",
+                    "text"
+                ],
+                "title": "Fact"
+            },
+            "GenerateRequest": {
+                "properties": {
+                    "pair_id": {
+                        "type": "string",
+                        "title": "Pair Id"
+                    },
+                    "prompt": {
+                        "type": "string",
+                        "minLength": 3,
+                        "title": "Prompt",
+                        "description": "what the article should say / angle"
+                    },
+                    "template_id": {
+                        "type": "string",
+                        "title": "Template Id",
+                        "default": "one_pager_v1"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "pair_id",
+                    "prompt"
+                ],
+                "title": "GenerateRequest"
+            },
+            "HTTPValidationError": {
+                "properties": {
+                    "detail": {
+                        "items": {
+                            "$ref": "#/components/schemas/ValidationError"
+                        },
+                        "type": "array",
+                        "title": "Detail"
+                    }
+                },
+                "type": "object",
+                "title": "HTTPValidationError"
+            },
+            "ImageAsset": {
+                "properties": {
+                    "id": {
+                        "type": "string",
+                        "title": "Id"
+                    },
+                    "kind": {
+                        "type": "string",
+                        "enum": [
+                            "logo",
+                            "image"
+                        ],
+                        "title": "Kind",
+                        "default": "image"
+                    },
+                    "path": {
+                        "type": "string",
+                        "title": "Path"
+                    },
+                    "page": {
+                        "anyOf": [
+                            {
+                                "type": "integer"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Page"
+                    },
+                    "bbox": {
+                        "anyOf": [
+                            {
+                                "prefixItems": [
+                                    {
+                                        "type": "number"
+                                    },
+                                    {
+                                        "type": "number"
+                                    },
+                                    {
+                                        "type": "number"
+                                    },
+                                    {
+                                        "type": "number"
+                                    }
+                                ],
+                                "type": "array",
+                                "maxItems": 4,
+                                "minItems": 4
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Bbox"
+                    },
+                    "width": {
+                        "anyOf": [
+                            {
+                                "type": "integer"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Width"
+                    },
+                    "height": {
+                        "anyOf": [
+                            {
+                                "type": "integer"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Height"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "id",
+                    "path"
+                ],
+                "title": "ImageAsset"
+            },
+            "TemplateModel": {
+                "properties": {
+                    "id": {
+                        "type": "string",
+                        "title": "Id"
+                    },
+                    "name": {
+                        "type": "string",
+                        "title": "Name"
+                    },
+                    "blocks": {
+                        "items": {
+                            "$ref": "#/components/schemas/BlockSpecModel"
+                        },
+                        "type": "array",
+                        "title": "Blocks"
+                    },
+                    "palette": {
+                        "items": {
+                            "type": "string"
+                        },
+                        "type": "array",
+                        "title": "Palette"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "id",
+                    "name",
+                    "blocks",
+                    "palette"
+                ],
+                "title": "TemplateModel"
+            },
+            "UploadResponse": {
+                "properties": {
+                    "pair_id": {
+                        "type": "string",
+                        "title": "Pair Id"
+                    },
+                    "job_id": {
+                        "type": "string",
+                        "title": "Job Id"
+                    },
+                    "status": {
+                        "type": "string",
+                        "enum": [
+                            "processing",
+                            "done",
+                            "error"
+                        ],
+                        "title": "Status"
+                    },
+                    "message": {
+                        "type": "string",
+                        "title": "Message"
+                    },
+                    "briefs": {
+                        "items": {
+                            "type": "string"
+                        },
+                        "type": "array",
+                        "title": "Briefs"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "pair_id",
+                    "job_id",
+                    "status",
+                    "message"
+                ],
+                "title": "UploadResponse"
+            },
+            "ValidationError": {
+                "properties": {
+                    "loc": {
+                        "items": {
+                            "anyOf": [
+                                {
+                                    "type": "string"
+                                },
+                                {
+                                    "type": "integer"
+                                }
+                            ]
+                        },
+                        "type": "array",
+                        "title": "Location"
+                    },
+                    "msg": {
+                        "type": "string",
+                        "title": "Message"
+                    },
+                    "type": {
+                        "type": "string",
+                        "title": "Error Type"
+                    },
+                    "input": {
+                        "title": "Input"
+                    },
+                    "ctx": {
+                        "type": "object",
+                        "title": "Context"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "loc",
+                    "msg",
+                    "type"
+                ],
+                "title": "ValidationError"
+            }
+        },
+        "securitySchemes": {
+            "HTTPBearer": {
+                "type": "http",
+                "description": "Google-issued ID token",
+                "scheme": "bearer"
+            }
+        }
+    }
+}

@@ -27,6 +27,8 @@ parse → ground → draft (cited) → map to template → validate & repair →
 Supporting: `GET /templates` · `/companies/{pair_id}` · `/jobs/{pair_id}/{job_id}` · `/assets/{pair_id}/{id}` ·
 `/healthz` · the UI at `/` · and `/internal/parse` (the Pub/Sub push worker). Machine-readable spec:
 **`/openapi.json`** (Swagger at `/docs`) — the `HTTPBearer` scheme is attached to every protected route.
+A committed snapshot is in **`openapi.json`**, and a ready-to-import **`postman_collection.json`**
+(base URL preset; a test script auto-captures `job_id` for the poll) sits at the repo root.
 
 ## Auth (from a terminal)
 With `AUTH_MODE=google`, every data route needs a **Google ID token**. The deployed service is also
@@ -134,7 +136,7 @@ infra/                    # Terraform: Cloud Run, GCS·CMEK, Firestore, Pub/Sub,
 static/                   # Collateral Studio UI (index.html, styles.css, app.js)
 sample_data/              # make_samples.py + two image-rich sample PDFs
 tests/                    # constraints · offline pipeline · usage/cost · async API · messaging
-Dockerfile · deploy.sh · ARCHITECTURE.md · DEPLOY.md
+Dockerfile · deploy.sh · ARCHITECTURE.md · DEPLOY.md · openapi.json · postman_collection.json
 ```
 
 ---
