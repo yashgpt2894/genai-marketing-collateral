@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Collateral Studio — grounded B2B collateral</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=Spline+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="/static/styles.css" />
+</head>
+<body>
+<div class="grain" aria-hidden="true"></div>
+
+<header class="topbar">
+  <div class="wordmark">
+    <span class="mark">◣</span>
+    <div>
+      <div class="title">Collateral&nbsp;Studio</div>
+      <div class="sub">grounded B2B collateral &mdash; sender → receiver</div>
+    </div>
+  </div>
+  <div class="status" id="health">
+    <span class="dot" id="health-dot"></span>
+    <span id="health-text">checking service…</span>
+    <span class="models" id="health-models"></span>
+  </div>
+</header>
+
+<main class="shell">
+  <!-- ───────────── controls rail ───────────── -->
+  <section class="rail" id="rail">
+    <div class="step">
+      <label class="lbl">Pair</label>
+      <input id="pair" class="field" value="nimbus__vanguard" spellcheck="false" />
+      <p class="hint">One sender + one receiver share a pair id.</p>
+    </div>
+
+    <div class="step">
+      <label class="lbl">1 · Context PDFs</label>
+      <div class="drops">
+        <label class="drop" id="drop-sender">
+          <input type="file" accept="application/pdf" multiple hidden data-role="sender" />
+          <span class="role">Sender</span>
+          <span class="dz" data-dz="sender">drop / choose PDF</span>
+          <span class="state" data-state="sender"></span>
+        </label>
+        <label class="drop" id="drop-receiver">
+          <input type="file" accept="application/pdf" multiple hidden data-role="receiver" />
+          <span class="role">Receiver</span>
+          <span class="dz" data-dz="receiver">drop / choose PDF</span>
+          <span class="state" data-state="receiver"></span>
+        </label>
+      </div>
+      <p class="hint">Parsed by a vision-language model into source-tagged briefs.</p>
+    </div>
+
+    <div class="step">
+      <label class="lbl">2 · Template</label>
+      <select id="template" class="field"></select>
+    </div>
+
+    <div class="step grow">
+      <label class="lbl">3 · Editor prompt</label>
+      <textarea id="prompt" class="field area" spellcheck="false">Write a one-page pitch showing how the sender helps the receiver cut idle fleet time and improve on-time delivery. Practical, evidence-led tone.</textarea>
+    </div>
+
+    <div class="actions">
+      <button id="generate" class="btn primary">Generate collateral</button>
+      <button id="load-example" class="btn ghost" title="Render a saved example without calling the model">Load example</button>
+    </div>
+    <p class="err" id="error" hidden></p>
+  </section>
+
+  <!-- ───────────── deliverable canvas ───────────── -->
+  <section class="canvas">
+    <div class="trust" id="trust" hidden>
+      <div class="metric"><span class="big" id="t-conf">—</span><span class="cap">confidence</span></div>
+      <div class="metric"><span class="big" id="t-faith">—</span><span class="cap">faithfulness</span></div>
+      <div class="metric"><span class="big" id="t-fit">—</span><span class="cap">blocks within limits</span></div>
+      <div class="flags" id="t-flags"></div>
+      <div class="meta" id="t-meta"></div>
+    </div>
+
+    <div class="tabs" id="tabs" hidden>
+      <button class="tab active" data-tab="preview">Preview</button>
+      <button class="tab" data-tab="inspect">Inspect constraints</button>
+      <button class="tab" data-tab="json">JSON</button>
+    </div>
+
+    <!-- empty state -->
+    <div class="placeholder" id="placeholder">
+      <div class="ph-card">
+        <div class="ph-kicker">deterministic pipeline</div>
+        <h2>parse → ground → draft → map → validate &amp; repair</h2>
+        <p>Upload a sender and receiver PDF, write a prompt, and generate. The article is
+           drafted only from source-tagged facts, mapped to the template, and every word limit
+           is enforced in code — not left to the model.</p>
+        <p class="ph-note">No key yet? Hit <b>Load example</b> to see a finished result.</p>
+      </div>
+    </div>
+
+    <!-- preview: the deliverable as 'paper' -->
+    <div class="pane" id="pane-preview" hidden>
+      <article class="brochure" id="brochure"></article>
+    </div>
+
+    <!-- inspector -->
+    <div class="pane" id="pane-inspect" hidden>
+      <table class="inspect" id="inspect">
+        <thead><tr><th>block</th><th>type</th><th>words</th><th>budget</th><th>status</th><th>citations</th></tr></thead>
+        <tbody></tbody>
+      </table>
+      <div class="faith-detail" id="faith-detail"></div>
+    </div>
+
+    <!-- raw json -->
+    <div class="pane" id="pane-json" hidden>
+      <pre class="json" id="json"></pre>
+    </div>
+  </section>
+</main>
+
+<!-- saved example output for offline preview (NOT a model mock — the live path calls Gemini) -->
+<script type="application/json" id="example-output">
+{
+  "pair_id": "nimbus__vanguard",
+  "template_id": "one_pager_v1",
+  "blocks": [
+    { "id": "headline", "type": "heading", "text": "Cut Vanguard's idle fleet hours with Nimbus AI", "words": 8, "min_words": 4, "max_words": 9, "citations": ["recv.fact.3","send.fact.1"], "image_ref": null, "color": "0FB5A6" },
+    { "id": "subhead", "type": "subheading", "text": "How real-time route optimization turns 1.9 idle hours per truck into freight on the move", "words": 15, "min_words": 8, "max_words": 20, "citations": ["recv.fact.3","send.fact.1"], "image_ref": null, "color": null },
+    { "id": "hero", "type": "caption", "text": "Vanguard's fleet, optimized by Nimbus", "words": 5, "min_words": 3, "max_words": 12, "citations": [], "image_ref": "receiver0_img_1_0", "color": null },
+    { "id": "body", "type": "body", "text": "Vanguard Freight runs 480 trucks across the Benelux, yet manual dispatch leaves each vehicle idle nearly two hours a day while planners assign the next load. Nimbus AI re-plans routes in real time as orders and traffic shift, the same approach that has cut idle time by 28% and lifted on-time delivery by twelve points elsewhere. For a pragmatic buyer it deploys in weeks on your existing telematics, so a single pilot can prove the numbers before any fleet-wide rollout.", "words": 80, "min_words": 55, "max_words": 95, "citations": ["recv.fact.1","recv.fact.3","send.fact.2","send.fact.3","send.fact.4"], "image_ref": null, "color": null },
+    { "id": "cta", "type": "cta", "text": "Book a 15-minute pilot scoping call with Nimbus", "words": 8, "min_words": 4, "max_words": 14, "citations": [], "image_ref": null, "color": "0FB5A6" }
+  ],
+  "assets": { "hero": "receiver0_img_1_0" },
+  "confidence": 0.94,
+  "constraints_ok": true,
+  "constraints": { "ok": true, "blocks_within_limits": 5, "total_blocks": 5, "violations": [], "repaired_blocks": ["body"], "truncated_blocks": [] },
+  "faithfulness": { "score": 1.0, "supported": 2, "total_claims": 2, "unsupported_claims": [], "checked": true },
+  "meta": { "request_id": "demo-req-001", "model_writer": "gemini-2.5-pro", "prompt_version": "p1/t1", "template_id": "one_pager_v1", "repair_iterations": 1 }
+}
+</script>
+
+<script src="/static/app.js"></script>
+</body>
+</html>

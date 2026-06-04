@@ -1,0 +1,5 @@
+# Copy to terraform.tfvars and fill in. PERSONAL project only.
+project_id = "ml6-collateral-xxxxx"
+region     = "europe-west1"
+# image is set during apply (see README) once the container is built:
+# image    = "europe-west1-docker.pkg.dev/ml6-collateral-xxxxx/collateral/api:v1"

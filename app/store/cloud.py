@@ -1,0 +1,110 @@
+"""
+Cloud backend: **GCS** for blobs (PDFs + assets) and **Firestore** for documents
+(briefs, jobs, outputs). Same Store interface as LocalStore, so nothing upstream
+changes — flip STORE_BACKEND=cloud and set GCS_BUCKET.
+
+The google-cloud SDKs are imported lazily (in __init__), so the app still runs
+locally without them installed; you only need them when this backend is selected.
+
+Key scheme (tenant-first, so isolation is structural):
+  GCS:       <tenant>/<pair>/uploads/<key>   ·   <tenant>/<pair>/assets/<id>.<ext>
+  Firestore: tenants/<tenant>/pairs/<pair>/{briefs|jobs|outputs}/<doc-id>
+"""
+from __future__ import annotations
+
+import re
+from typing import Any, Optional
+
+from app.config import Settings, get_settings
+from app.schemas import ArticleJSON, CompanyBrief
+from app.store.base import content_type_for
+
+_SEG = re.compile(r"[^a-zA-Z0-9_\-.]")
+
+
+def _seg(s: str) -> str:
+    out = _SEG.sub("_", s).strip("_")
+    if not out:
+        raise ValueError(f"invalid storage segment: {s!r}")
+    return out
+
+
+class CloudStore:
+    def __init__(self, settings: Optional[Settings] = None) -> None:
+        self.s = settings or get_settings()
+        if not self.s.gcs_bucket:
+            raise ValueError("STORE_BACKEND=cloud requires GCS_BUCKET to be set")
+        try:
+            from google.cloud import firestore, storage
+        except Exception as e:  # pragma: no cover - only when cloud backend is used
+            raise RuntimeError(
+                "Cloud store needs google-cloud-firestore and google-cloud-storage "
+                "(`pip install '.[cloud]'`)."
+            ) from e
+        self._fs = firestore.Client(database=self.s.firestore_database)
+        self._bucket = storage.Client().bucket(self.s.gcs_bucket)
+
+    # -- key helpers -----------------------------------------------------------
+    def _prefix(self, tenant: str, pair_id: str) -> str:
+        return f"{_seg(tenant)}/{_seg(pair_id)}"
+
+    def _coll(self, tenant: str, pair_id: str, kind: str) -> Any:
+        return (self._fs.collection("tenants").document(_seg(tenant))
+                .collection("pairs").document(_seg(pair_id)).collection(kind))
+
+    # -- uploads ---------------------------------------------------------------
+    def save_upload(self, tenant: str, pair_id: str, role: str, filename: str, data: bytes) -> str:
+        from pathlib import Path
+        key = f"{_seg(role)}_{_seg(Path(filename).name)}"
+        self._bucket.blob(f"{self._prefix(tenant, pair_id)}/uploads/{key}").upload_from_string(
+            data, content_type="application/pdf")
+        return key
+
+    def load_upload(self, tenant: str, pair_id: str, key: str) -> bytes:
+        return self._bucket.blob(f"{self._prefix(tenant, pair_id)}/uploads/{_seg(key)}").download_as_bytes()
+
+    def list_uploads(self, tenant: str, pair_id: str, role: str) -> list[str]:
+        prefix = f"{self._prefix(tenant, pair_id)}/uploads/{_seg(role)}_"
+        return sorted(b.name.split("/")[-1] for b in self._bucket.list_blobs(prefix=prefix))
+
+    # -- assets ----------------------------------------------------------------
+    def save_asset(self, tenant: str, pair_id: str, asset_id: str, ext: str, data: bytes) -> str:
+        path = f"{self._prefix(tenant, pair_id)}/assets/{_seg(asset_id)}.{_seg(ext)}"
+        self._bucket.blob(path).upload_from_string(data, content_type=content_type_for(ext))
+        return asset_id
+
+    def load_asset(self, tenant: str, pair_id: str, asset_id: str) -> Optional[tuple[bytes, str]]:
+        prefix = f"{self._prefix(tenant, pair_id)}/assets/{_seg(asset_id)}."
+        blobs = list(self._bucket.list_blobs(prefix=prefix))
+        if not blobs:
+            return None
+        b = blobs[0]
+        return b.download_as_bytes(), (b.content_type or content_type_for(b.name.rsplit(".", 1)[-1]))
+
+    # -- briefs ----------------------------------------------------------------
+    def save_brief(self, tenant: str, pair_id: str, brief: CompanyBrief) -> None:
+        self._coll(tenant, pair_id, "briefs").document(_seg(brief.role)).set(brief.model_dump())
+
+    def load_brief(self, tenant: str, pair_id: str, role: str) -> Optional[CompanyBrief]:
+        snap = self._coll(tenant, pair_id, "briefs").document(_seg(role)).get()
+        return CompanyBrief.model_validate(snap.to_dict()) if snap.exists else None
+
+    def ready_roles(self, tenant: str, pair_id: str) -> list[str]:
+        return [r for r in ("sender", "receiver")
+                if self._coll(tenant, pair_id, "briefs").document(r).get().exists]
+
+    # -- jobs ------------------------------------------------------------------
+    def set_job(self, tenant: str, pair_id: str, job_id: str, status: str, message: str = "") -> None:
+        self._coll(tenant, pair_id, "jobs").document(_seg(job_id)).set({"status": status, "message": message})
+
+    def get_job(self, tenant: str, pair_id: str, job_id: str) -> Optional[dict]:
+        snap = self._coll(tenant, pair_id, "jobs").document(_seg(job_id)).get()
+        return snap.to_dict() if snap.exists else None
+
+    # -- outputs ---------------------------------------------------------------
+    def save_output(self, tenant: str, pair_id: str, result: ArticleJSON) -> None:
+        self._coll(tenant, pair_id, "outputs").document(_seg(result.meta.request_id)).set(result.model_dump())
+
+    def load_output(self, tenant: str, pair_id: str, request_id: str) -> Optional[ArticleJSON]:
+        snap = self._coll(tenant, pair_id, "outputs").document(_seg(request_id)).get()
+        return ArticleJSON.model_validate(snap.to_dict()) if snap.exists else None

@@ -1,0 +1,86 @@
+{
+  "pair_id": "nimbus__vanguard",
+  "template_id": "one_pager_v1",
+  "blocks": [
+    {
+      "id": "headline",
+      "type": "heading",
+      "text": "Cut Vanguard's idle fleet hours with Nimbus AI",
+      "words": 8,
+      "min_words": 4,
+      "max_words": 9,
+      "citations": ["recv.fact.3", "send.fact.1"],
+      "image_ref": null,
+      "color": "0FB5A6"
+    },
+    {
+      "id": "subhead",
+      "type": "subheading",
+      "text": "How real-time route optimization turns 1.9 idle hours per truck into freight on the move",
+      "words": 15,
+      "min_words": 8,
+      "max_words": 20,
+      "citations": ["recv.fact.3", "send.fact.1"],
+      "image_ref": null,
+      "color": null
+    },
+    {
+      "id": "hero",
+      "type": "caption",
+      "text": "Vanguard's fleet, optimized by Nimbus",
+      "words": 5,
+      "min_words": 3,
+      "max_words": 12,
+      "citations": [],
+      "image_ref": "receiver0_img_1_0",
+      "color": null
+    },
+    {
+      "id": "body",
+      "type": "body",
+      "text": "Vanguard Freight runs 480 trucks across the Benelux, yet manual dispatch leaves each vehicle idle nearly two hours a day while planners assign the next load. Nimbus AI re-plans routes in real time as orders and traffic shift, the same approach that has cut idle time by 28% and lifted on-time delivery by twelve points elsewhere. For a pragmatic buyer it deploys in weeks on your existing telematics, so a single pilot can prove the numbers before any fleet-wide rollout.",
+      "words": 80,
+      "min_words": 55,
+      "max_words": 95,
+      "citations": ["recv.fact.1", "recv.fact.3", "send.fact.2", "send.fact.3", "send.fact.4"],
+      "image_ref": null,
+      "color": null
+    },
+    {
+      "id": "cta",
+      "type": "cta",
+      "text": "Book a 15-minute pilot scoping call with Nimbus",
+      "words": 8,
+      "min_words": 4,
+      "max_words": 14,
+      "citations": [],
+      "image_ref": null,
+      "color": "0FB5A6"
+    }
+  ],
+  "assets": { "hero": "receiver0_img_1_0" },
+  "confidence": 0.94,
+  "constraints_ok": true,
+  "constraints": {
+    "ok": true,
+    "blocks_within_limits": 5,
+    "total_blocks": 5,
+    "violations": [],
+    "repaired_blocks": ["body"],
+    "truncated_blocks": []
+  },
+  "faithfulness": {
+    "score": 1.0,
+    "supported": 2,
+    "total_claims": 2,
+    "unsupported_claims": [],
+    "checked": true
+  },
+  "meta": {
+    "request_id": "demo-req-001",
+    "model_writer": "gemini-3.1-pro",
+    "prompt_version": "p1/t1",
+    "template_id": "one_pager_v1",
+    "repair_iterations": 1
+  }
+}

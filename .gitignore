@@ -1,0 +1,23 @@
+# secrets — never commit real credentials
+.env
+*.key
+
+# local runtime data (uploaded PDFs, extracted assets, briefs, outputs)
+data/
+
+# python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.eggs/
+build/
+dist/
+.venv/
+venv/
+.pytest_cache/
+.mypy_cache/
+
+# os / editor
+.DS_Store
+.idea/
+.vscode/

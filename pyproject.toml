@@ -1,0 +1,38 @@
+[project]
+name = "genai-collateral"
+version = "0.1.0"
+description = "Grounded, structured B2B marketing collateral generation (ML6 challenge, Case 2)"
+requires-python = ">=3.11"
+dependencies = [
+    "fastapi>=0.115",
+    "uvicorn[standard]>=0.30",
+    "pydantic>=2.7",
+    "pydantic-settings>=2.3",
+    "python-multipart>=0.0.9",   # multipart file uploads
+    "google-genai>=0.3",         # unified Gemini SDK (Developer API + Vertex)
+    "google-auth>=2.0",          # verify Google ID tokens (request auth)
+    "pymupdf>=1.24",             # logo/image extraction with bounding boxes
+    "reportlab>=4.0",            # only used by sample_data/make_samples.py
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0",
+    "httpx>=0.27",   # FastAPI TestClient
+]
+cloud = [
+    "google-cloud-firestore>=2.16",   # briefs / jobs / outputs
+    "google-cloud-storage>=2.16",     # raw PDFs + extracted assets
+    "google-cloud-pubsub>=2.21",      # async parse dispatch
+]
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools]
+packages = ["app"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"

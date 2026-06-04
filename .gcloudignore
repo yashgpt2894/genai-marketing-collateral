@@ -1,0 +1,14 @@
+# What NOT to upload to Cloud Build on `gcloud run deploy --source .`
+# Critically excludes .env (the secret) and local runtime data.
+.git/
+.venv/
+venv/
+data/
+.env
+__pycache__/
+*.pyc
+.pytest_cache/
+.mypy_cache/
+*.egg-info/
+sample_data/
+tests/
