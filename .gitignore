@@ -21,3 +21,6 @@ venv/
 .DS_Store
 .idea/
 .vscode/
+
+# office lock/temp files (created while a .pptx/.docx is open)
+~$*

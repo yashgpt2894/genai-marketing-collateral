@@ -132,7 +132,7 @@ app/
   store/                  # base.py (interface) · local.py (fs) · cloud.py (Firestore + GCS) · get_store()
 infra/                    # Terraform: Cloud Run, GCS·CMEK, Firestore, Pub/Sub, IAM, Vertex SA
 static/                   # Collateral Studio UI (index.html, styles.css, app.js)
-sample_data/              # make_samples.py + two image-rich sample PDFs + sample_result.json
+sample_data/              # make_samples.py + two image-rich sample PDFs
 tests/                    # constraints · offline pipeline · usage/cost · async API · messaging
 Dockerfile · deploy.sh · ARCHITECTURE.md · DEPLOY.md
 ```
