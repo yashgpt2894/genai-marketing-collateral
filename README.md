@@ -38,7 +38,7 @@ Cloud Run IAM-private, so one token satisfies both layers:
 ```bash
 URL=https://<your-service>.run.app
 TOKEN=$(gcloud auth print-identity-token --audiences="$URL")          # or impersonate an invoker SA
-curl -H "Authorization: Bearer $TOKEN" "$URL/healthz"
+curl -H "Authorization: Bearer $TOKEN" "$URL/templates"               # any data route; one token clears both layers
 ```
 Locally (`AUTH_MODE=none`, the default) no token is required. See [DEPLOY.md](DEPLOY.md) for the full flow.
 
@@ -70,10 +70,10 @@ curl "$URL/generate/demo1/<job_id>" -H "Authorization: Bearer $TOKEN"           
 
 ### Tests
 ```bash
-pip install '.[dev]' && pytest      # 35 tests, all offline (no network / no real model)
+pip install '.[dev]' && pytest      # 50 tests, all offline (no network / no real model)
 python -m app.eval.harness          # golden-set eval (offline; add --live for real Gemini quality)
 ```
-constraint engine · offline pipeline (injected fake LLM) · token/cost · async API (TestClient) · messaging · cache · metrics · **eval harness**.
+constraint engine · offline pipeline (injected fake LLM) · token/cost · async API (TestClient) · messaging · cache · metrics · **templates CRUD + jobs** · **eval harness**.
 
 ---
 
@@ -98,6 +98,19 @@ constraint engine · offline pipeline (injected fake LLM) · token/cost · async
 - **Prompt-injection posture.** PDFs are untrusted input: document text is a **separate DATA channel**, the
   system prompt forbids obeying instructions inside it, the writer sees only distilled facts, and a sanitise
   pass runs. `Model Armor` on Vertex sits in front in production.
+
+---
+
+## Security & responsible AI
+
+Mapped to ML6's **Safe & Secure / Responsible AI** pillars. **Implemented:** prompt-injection defense
+(untrusted PDF text as a separate **DATA channel** + an `INJECTION_GUARD`, distilled-facts-only) ·
+**grounded/cited with abstention** and **no fabricated logos** (images are *extracted*, never generated) ·
+graceful repair-loop failure · **least-privilege IAM + no secrets** (Vertex via ADC) · **CMEK** + EU-region
+storage + retention (365-day lifecycle + `DELETE` endpoints) · versioned, cost-stamped outputs.
+**Hardening posture (not yet provisioned):** Model Armor · VPC-SC · Secret Manager · DLP/PII scanning ·
+EU model residency · per-tenant rate/cost budgets. Full detail →
+**[ARCHITECTURE.md → Security & responsible AI](ARCHITECTURE.md#security--responsible-ai)**.
 
 ---
 
@@ -154,8 +167,10 @@ Dockerfile · deploy.sh · ARCHITECTURE.md · DEPLOY.md · openapi.json · postm
 
 ## Status & honest limitations
 **Deployed and tested end-to-end on GCP** (auth → upload → async parse → generate → grounded `ArticleJSON`
-with cost). **Single-tenant** prototype, with the tenant plumbing already threaded for multi-tenant. Known
-follow-ups: tune the faithfulness judge, pin the model to an EU region (currently `global`), and build the
-org dashboard. The deterministic core is tested; generation quality depends on the live model + the briefs.
+with cost). Full template CRUD, job history, and asset management are live. **Single-tenant** prototype,
+with the tenant plumbing already threaded for multi-tenant. Known follow-ups: tune the faithfulness judge,
+pin the model to an EU region (currently `global`), and wire Looker Studio over the **already-built**
+BigQuery metrics export. The deterministic core is tested (50 offline tests); generation quality depends
+on the live model + the briefs.
 
 > Secrets live only in `.env` (git-ignored) / Secret Manager. Commit `.env.example`, never a real key.
