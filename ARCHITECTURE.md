@@ -29,8 +29,11 @@ flowchart TB
   BQ -.-> LOOK["Looker dashboard, config-gated"]
 ```
 
-Cross-cutting: **Model Armor** · per-tenant-ready **CMEK** · **EU residency** · **VPC-SC** ·
-**Secret Manager** · least-privilege **IAM** (the Cloud Run SA has `roles/aiplatform.user`).
+Cross-cutting — **in place:** per-tenant-ready **CMEK** on the bucket · **least-privilege IAM** (the
+Cloud Run SA holds only `datastore.user` + `aiplatform.user` + bucket `objectAdmin` + `pubsub.publisher`) ·
+**EU-region storage** (GCS + Firestore in `europe-west1`; model calls use the `global` Vertex endpoint —
+EU model residency is on the roadmap). **Hardening posture (not yet provisioned):** Model Armor · VPC-SC ·
+Secret Manager.
 
 ---
 
@@ -89,7 +92,7 @@ Storage is already tenant-keyed, so it's an auth-claim change, not a refactor.
 | Cache | **Memorystore (Redis)** — fail-open, config-gated | a cache hit skips the model call |
 | Metrics | **BigQuery** row per generation → Looker Studio (config-gated) | confidence/faithfulness/cost per tenant |
 | Eval | golden-set harness (offline + `--live`) | faithfulness/constraint regression gate |
-| Governance | Model Armor · CMEK · VPC-SC · Secret Manager · IAM | security + responsible AI |
+| Governance | **CMEK + least-priv IAM** (in place); Model Armor · VPC-SC · Secret Manager (hardening posture) | security + responsible AI |
 | CI/CD | **Cloud Build** + **Terraform** (`infra/`) | full stack as code, EU |
 
 ---
@@ -107,6 +110,7 @@ Storage is already tenant-keyed, so it's an auth-claim change, not a refactor.
 | `PUT /templates/{id}` · `DELETE /templates/{id}` | Bearer | `TemplateModel` (PUT) | edit / delete a custom template (built-ins read-only) |
 | `DELETE /assets/{pair}/{id}` | Bearer | — | delete an extracted asset |
 | `GET  /health` · `/healthz` · `GET /` | public | — | liveness · UI |
+| `POST /internal/parse` | OIDC (Pub/Sub push SA) | base64 push envelope | the async parse worker; not a public route |
 
 Full machine-readable spec is the app's auto-generated **OpenAPI** at `/openapi.json` (interactive
 Swagger UI at `/docs`), where the `HTTPBearer` security scheme is attached to every protected route.
@@ -115,6 +119,47 @@ Swagger UI at `/docs`), where the `HTTPBearer` security scheme is attached to ev
 **`postman_collection.json`** imports straight into Postman — base URL preset, Bearer auth wired
 (for `AUTH_MODE=google`), and a test script that auto-captures `job_id` so the poll request just runs.
 Postman can also import `openapi.json` (or the live `/openapi.json`) to generate a collection directly.
+
+---
+
+## Data model & storage layout
+
+Everything is keyed **tenant-first**, so isolation is structural (one tenant's key can never address
+another's). A **pair** groups one `sender` + one `receiver`; reusing a `pair_id` is the intended pattern
+(upload once, generate many) and is last-write-wins per role.
+
+**Firestore** (documents) — database `(default)`, Native mode, `europe-west1`:
+```
+tenants/{tenant}/pairs/{pair}/briefs/{sender|receiver}   CompanyBrief (source-tagged facts)
+tenants/{tenant}/pairs/{pair}/jobs/{job_id}              {status, message, kind, created_at, updated_at}
+tenants/{tenant}/pairs/{pair}/outputs/{request_id}       ArticleJSON  (request_id == its job_id)
+tenants/{tenant}/templates/{id}                          custom TemplateModel
+```
+**Cloud Storage** (blobs) — bucket `…-collateral`, CMEK:
+```
+{tenant}/{pair}/uploads/{role}_{filename}                raw PDFs (idempotent per role+filename)
+{tenant}/{pair}/assets/{asset_id}.{ext}                  extracted images / logos
+```
+A **job** carries `kind` (`parse` | `generate`) — set on create, preserved across status updates — plus
+`created_at` / `updated_at`, so `GET /jobs/{pair}` returns a newest-first, filterable history. A finished
+generate job links straight to its `ArticleJSON` because the output reuses the job id.
+
+---
+
+## Limits, failures & security
+
+- **Status codes:** `401` missing/invalid token · `403` IAM (no `run.invoker`) · `404` unknown id ·
+  `409` briefs not ready / id conflict (built-in or duplicate) · `413` upload over `MAX_UPLOAD_MB`
+  (default 10 MB) · `422` invalid body (Pydantic + template validation) · `503` model not configured.
+- **Idempotency:** an `Idempotency-Key` header on `/generate` makes a retried POST return the same job;
+  uploads are idempotent per `(role, filename)`.
+- **Prompt-injection posture:** PDFs are untrusted input — document text is a separate **DATA channel**,
+  the system prompt forbids obeying instructions inside it (`INJECTION_GUARD`), the writer sees only
+  distilled facts and **abstains** rather than inventing. (Model Armor on Vertex is the production add.)
+- **Fail-open add-ons:** the result cache and the metrics export never break a request — a Redis/BigQuery
+  outage degrades to "no cache" / "no row", not a `5xx`.
+- **Scaling:** Cloud Run scales **0 → 10** instances; the heavy work (parse, generate) runs **off the
+  request path** (Pub/Sub worker + the async job), so request latency is bounded and bursts queue.
 
 ---
 
