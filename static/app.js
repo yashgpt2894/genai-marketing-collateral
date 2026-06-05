@@ -12,7 +12,6 @@ document.addEventListener("DOMContentLoaded", () => {
   loadTemplates();
   wireDrops();
   $("#generate").addEventListener("click", generate);
-  $("#load-example").addEventListener("click", loadExample);
   $$(".tab").forEach((t) => t.addEventListener("click", () => switchTab(t.dataset.tab)));
 });
 
@@ -139,13 +138,6 @@ function pollGenerate(jobId) {
     };
     tick(0);
   });
-}
-
-function loadExample() {
-  try {
-    const data = JSON.parse($("#example-output").textContent);
-    render(data);
-  } catch (e) { console.error(e); }
 }
 
 /* ───────────── render ───────────── */

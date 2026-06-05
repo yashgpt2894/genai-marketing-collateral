@@ -160,8 +160,6 @@ select.field { appearance: none; cursor: pointer;
 .btn.primary:hover { background: var(--teal-2); transform: translateY(-1px); box-shadow: 0 12px 28px rgba(15,181,166,.36); }
 .btn.primary:active { transform: translateY(0); }
 .btn.primary:disabled { background: var(--line-2); color: var(--faint); box-shadow: none; cursor: progress; }
-.btn.ghost { background: transparent; border-color: var(--line-2); color: var(--muted); }
-.btn.ghost:hover { border-color: var(--teal); color: var(--text); }
 .err { color: var(--red); font-size: 12.5px; font-family: var(--mono); margin: 2px 0 0; line-height: 1.4; }
 
 /* ───────────── canvas ───────────── */
@@ -200,8 +198,6 @@ select.field { appearance: none; cursor: pointer;
 .ph-kicker { font-family: var(--mono); font-size: 11px; letter-spacing: 2px; text-transform: uppercase; color: var(--teal-2); }
 .ph-card h2 { font-family: var(--display); font-weight: 500; font-size: 28px; margin: 14px 0 16px; color: var(--text); line-height: 1.2; }
 .ph-card p { color: var(--muted); font-size: 14.5px; line-height: 1.6; margin: 0 0 10px; }
-.ph-note { color: var(--faint); font-size: 13px; }
-.ph-note b { color: var(--teal-2); font-weight: 600; }
 
 .pane { animation: fade .45s both; }
 
