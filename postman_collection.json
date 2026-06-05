@@ -12,7 +12,7 @@
     { "key": "baseUrl", "value": "https://collateral-api-jcpyg2mozq-ew.a.run.app" },
     { "key": "pair_id", "value": "demo1" },
     { "key": "job_id", "value": "" },
-    { "key": "asset_id", "value": "" },
+    { "key": "asset_id", "value": "receiver0_img_1_0" },
     { "key": "tenant", "value": "" },
     { "key": "token", "value": "" }
   ],
@@ -120,6 +120,20 @@
     },
     {
       "name": "5. Poll generation -> ArticleJSON",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "var r = (pm.response.json() || {}).result || {};",
+              "var id = Object.values(r.assets || {})[0];",
+              "if (!id && Array.isArray(r.blocks)) { var b = r.blocks.filter(function(x){ return x.image_ref; })[0]; if (b) { id = b.image_ref; } }",
+              "if (id) { pm.collectionVariables.set('asset_id', id); console.log('saved asset_id=' + id + ' -> the Get asset request now works'); }"
+            ]
+          }
+        }
+      ],
       "request": {
         "method": "GET",
         "header": [],
@@ -142,7 +156,7 @@
         "method": "GET",
         "header": [],
         "url": { "raw": "{{baseUrl}}/assets/{{pair_id}}/{{asset_id}}", "host": ["{{baseUrl}}"], "path": ["assets", "{{pair_id}}", "{{asset_id}}"] },
-        "description": "Fetch an image/logo extracted during parsing (asset id without file extension)."
+        "description": "Fetch an image/logo extracted from the PDFs during parsing. asset_id is NOT arbitrary — use a real one: from GET /companies/{pair} (each brief's images[].id and logo_asset, e.g. receiver0_img_1_0) or a generated article's assets map / a block image_ref. The Poll request auto-saves one into {{asset_id}}, so after polling a done article this just works. Returns the PNG/JPEG bytes; 404 if the id is empty or doesn't exist for this pair."
       }
     }
   ]
