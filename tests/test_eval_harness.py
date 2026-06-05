@@ -10,7 +10,7 @@ import pytest  # noqa: E402
 pytest.importorskip("pydantic", reason="runtime deps not installed in this environment")
 
 from app.eval.harness import EvalCase, load_cases, run_eval  # noqa: E402
-from app.schemas import CompanyBrief, Fact  # noqa: E402
+from app.schemas import CompanyBrief, Fact, ImageAsset  # noqa: E402
 
 _GOLDEN = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
                        "evals", "golden_cases.json")
@@ -23,6 +23,10 @@ def _brief(role, prefix):
         tone_signals=["practical"], key_stats=["30% less idle time"],
         facts=[Fact(id=f"{prefix}.fact.1", text="a supporting fact", source_page=1)],
         logo_asset=f"{prefix}_logo" if role == "receiver" else None,
+        images=[
+            ImageAsset(id=f"{prefix}_logo", kind="logo", path=f"{prefix}_logo", width=120, height=120),
+            ImageAsset(id=f"{prefix}_hero", kind="photo", path=f"{prefix}_hero", width=1200, height=800),
+        ],
     )
 
 

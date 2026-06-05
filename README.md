@@ -70,18 +70,21 @@ curl "$URL/generate/demo1/<job_id>" -H "Authorization: Bearer $TOKEN"           
 
 ### Tests
 ```bash
-pip install '.[dev]' && pytest      # 50 tests, all offline (no network / no real model)
+pip install '.[dev]' && pytest      # 54 tests, all offline (no network / no real model)
 python -m app.eval.harness          # golden-set eval (offline; add --live for real Gemini quality)
 ```
-constraint engine · offline pipeline (injected fake LLM) · token/cost · async API (TestClient) · messaging · cache · metrics · **templates CRUD + jobs** · **eval harness**.
+constraint engine · offline pipeline (injected fake LLM) · token/cost · async API (TestClient) · messaging · cache · metrics · **templates CRUD + jobs** · **image selection** · **eval harness**.
 
 ---
 
 ## Design decisions (the tradeoffs)
 
 - **PDF parsing — hybrid.** Gemini multimodal reads tables/charts/text into a typed brief (a VLM reads a
-  table as *meaning*); PyMuPDF deterministically extracts logo/image bytes for the asset library. `Document AI`
-  is the managed at-scale swap.
+  table as *meaning*); PyMuPDF deterministically extracts image/logo bytes, each **classified by shape**
+  (logo / photo / chart). `Document AI` is the managed at-scale swap.
+- **Image placement — role-based.** Each template image slot declares a **role** (logo / photo / chart); a
+  deterministic selector matches the best extracted image to each slot — **sender's brand first, no reuse**,
+  and a slot is left empty rather than forced with a wrong image. The `feature_v1` template uses all three roles.
 - **Grounding — long-context, not RAG (yet).** A bounded two-company corpus fits in context, so we stuff the
   *distilled, source-tagged* briefs — no vector DB, full traceability. Context assembly sits behind a
   `ContextAssembler` interface with a documented `RagAssembler` swap point.

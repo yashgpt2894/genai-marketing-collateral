@@ -914,6 +914,22 @@
               }
             ],
             "title": "Theme Color"
+          },
+          "image_role": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "logo",
+                  "photo",
+                  "chart"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Image Role"
           }
         },
         "type": "object",
@@ -1181,6 +1197,8 @@
             "type": "string",
             "enum": [
               "logo",
+              "photo",
+              "chart",
               "image"
             ],
             "title": "Kind",

@@ -55,8 +55,8 @@ class ExtractedAsset:
 def extract_text_and_assets(pdf_bytes: bytes, doc_prefix: str) -> tuple[str, list[ExtractedAsset]]:
     """
     Extract plain text (for sanitization preview / non-VLM fallback) and the
-    embedded images as bytes. Logo heuristic: the smallest image on page 1 is
-    tagged kind='logo'.
+    embedded images as bytes. Each image is classified by shape (logo / photo /
+    chart) so the layout can place the right kind of image in each template slot.
 
     Requires PyMuPDF (`pip install pymupdf`).
     """
@@ -65,10 +65,11 @@ def extract_text_and_assets(pdf_bytes: bytes, doc_prefix: str) -> tuple[str, lis
     except Exception as e:  # pragma: no cover
         raise ImportError("PyMuPDF is required for asset extraction: pip install pymupdf") from e
 
+    from app.constraints_core import classify_image_kind
+
     doc = fitz.open(stream=pdf_bytes, filetype="pdf")
     texts: list[str] = []
     assets: list[ExtractedAsset] = []
-    page1: list[ExtractedAsset] = []
 
     for pno in range(len(doc)):
         page = doc[pno]
@@ -98,12 +99,10 @@ def extract_text_and_assets(pdf_bytes: bytes, doc_prefix: str) -> tuple[str, lis
                 height=base.get("height"),
             )
             assets.append(asset)
-            if pno == 0:
-                page1.append(asset)
 
-    # logo heuristic: smallest image on page 1 (logos are usually small marks)
-    if page1:
-        min(page1, key=lambda a: float((a.width or 1) * (a.height or 1))).kind = "logo"
+    # classify each image by shape so the layout can place the right kind per slot
+    for a in assets:
+        a.kind = classify_image_kind(a.width, a.height)
 
     doc.close()
     return "\n\n".join(texts), assets

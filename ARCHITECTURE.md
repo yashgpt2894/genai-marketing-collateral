@@ -116,9 +116,10 @@ the JSON is consumed — a formal gate would only enter with a publish/send acti
 | Auth | **Google ID token** (verified in-app) + Cloud Run IAM | every data route requires `Authorization: Bearer <id-token>` |
 | API | **Cloud Run** (FastAPI) | the endpoints; stateless; scale-to-zero |
 | Async parse | **Pub/Sub** + **Cloud Run** push worker | decoupled, idempotent, retried + DLQ |
-| Parsing | **PyMuPDF** + **Gemini 2.5 Flash** (Document AI = managed scale swap) | image/logo assets + multimodal meaning |
+| Parsing | **PyMuPDF** + **Gemini 2.5 Flash** (Document AI = managed scale swap) | multimodal meaning + images classified by shape (logo/photo/chart) |
 | Generation | deterministic pipeline on Cloud Run | assemble → draft → map → validate → repair |
 | Templates | built-in (code) + **custom CRUD via `/templates`** (POST/PUT/DELETE, Firestore, tenant-scoped) | the hard layout contract |
+| Images | **role-based selection** (logo/photo/chart slots) | best extracted image per slot — sender-first, no reuse, empty if none |
 | Model | **Vertex AI** — Gemini 2.5 Pro / Flash | via the Cloud Run service account (no API key) |
 | Retrieval | long-context + (prod) context caching; structured facts in Firestore | bounded 2-company corpus |
 | Storage | **Cloud Storage** (CMEK) · **Firestore** | PDFs/assets · briefs/jobs/outputs |

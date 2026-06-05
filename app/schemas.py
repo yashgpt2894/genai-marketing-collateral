@@ -32,7 +32,7 @@ class Fact(BaseModel):
 
 class ImageAsset(BaseModel):
     id: str
-    kind: Literal["logo", "image"] = "image"
+    kind: Literal["logo", "photo", "chart", "image"] = "image"
     path: str
     page: Optional[int] = None
     bbox: Optional[tuple[float, float, float, float]] = None
@@ -80,6 +80,7 @@ class BlockSpecModel(BaseModel):
     max_words: int
     image_placeholder: bool = False
     theme_color: Optional[str] = None
+    image_role: Optional[Literal["logo", "photo", "chart"]] = None  # which image kind to place in this slot
 
 
 _HEX6 = re.compile(r"^[0-9A-Fa-f]{6}$")
@@ -112,6 +113,8 @@ class TemplateModel(BaseModel):
                     raise ValueError(f"block '{b.id}': theme_color '{b.theme_color}' must be 6-digit hex")
                 if b.theme_color not in self.palette:
                     raise ValueError(f"block '{b.id}': theme_color must be one of the palette colours")
+            if b.image_role is not None and not b.image_placeholder:
+                raise ValueError(f"block '{b.id}': image_role needs image_placeholder=true")
         return self
 
     @classmethod
@@ -120,7 +123,7 @@ class TemplateModel(BaseModel):
             id=t.id, name=t.name, palette=list(t.palette),
             blocks=[BlockSpecModel(id=b.id, type=b.type, min_words=b.min_words,
                                    max_words=b.max_words, image_placeholder=b.image_placeholder,
-                                   theme_color=b.theme_color) for b in t.blocks],
+                                   theme_color=b.theme_color, image_role=b.image_role) for b in t.blocks],
         )
 
     def to_spec(self) -> TemplateSpec:
@@ -128,7 +131,7 @@ class TemplateModel(BaseModel):
             id=self.id, name=self.name, palette=tuple(self.palette),
             blocks=tuple(BlockSpec(id=b.id, type=b.type, min_words=b.min_words,
                                    max_words=b.max_words, image_placeholder=b.image_placeholder,
-                                   theme_color=b.theme_color) for b in self.blocks),
+                                   theme_color=b.theme_color, image_role=b.image_role) for b in self.blocks),
         )
 
 

@@ -22,7 +22,7 @@ ONE_PAGER_V1 = TemplateSpec(
     blocks=(
         BlockSpec("headline", BlockType.HEADING, min_words=4, max_words=9, theme_color="0FB5A6"),
         BlockSpec("subhead", BlockType.SUBHEADING, min_words=8, max_words=20),
-        BlockSpec("hero", BlockType.CAPTION, min_words=3, max_words=12, image_placeholder=True),
+        BlockSpec("hero", BlockType.CAPTION, min_words=3, max_words=12, image_placeholder=True, image_role="photo"),
         BlockSpec("body", BlockType.BODY, min_words=55, max_words=95),
         BlockSpec("cta", BlockType.CTA, min_words=4, max_words=14, theme_color="0FB5A6"),
     ),
@@ -42,9 +42,26 @@ TWO_COLUMN_V1 = TemplateSpec(
     ),
 )
 
+FEATURE_V1 = TemplateSpec(
+    id="feature_v1",
+    name="Feature one-pager (logo + hero + chart)",
+    palette=_PALETTE,
+    blocks=(
+        BlockSpec("headline", BlockType.HEADING, min_words=4, max_words=10, theme_color="0FB5A6"),
+        BlockSpec("standfirst", BlockType.SUBHEADING, min_words=14, max_words=30),
+        BlockSpec("logo", BlockType.CAPTION, min_words=2, max_words=8, image_placeholder=True, image_role="logo"),
+        BlockSpec("hero", BlockType.CAPTION, min_words=4, max_words=16, image_placeholder=True, image_role="photo"),
+        BlockSpec("intro", BlockType.BODY, min_words=40, max_words=80),
+        BlockSpec("detail", BlockType.BODY, min_words=40, max_words=80),
+        BlockSpec("proof", BlockType.CAPTION, min_words=6, max_words=20, image_placeholder=True, image_role="chart"),
+        BlockSpec("cta", BlockType.CTA, min_words=4, max_words=16, theme_color="0FB5A6"),
+    ),
+)
+
 _REGISTRY: dict[str, TemplateSpec] = {
     ONE_PAGER_V1.id: ONE_PAGER_V1,
     TWO_COLUMN_V1.id: TWO_COLUMN_V1,
+    FEATURE_V1.id: FEATURE_V1,
 }
 
 # template definitions are versioned alongside prompts/models for reproducibility

@@ -19,6 +19,7 @@ from app.constraints_core import TemplateSpec, count_words
 from app.eval.constraint_checks import build_report
 from app.eval.faithfulness import JudgeFn, check_faithfulness
 from app.generate.context import ContextAssembler, default_assembler
+from app.generate.images import assign_images
 from app.generate.layout import map_and_repair
 from app.generate.writer import draft_article
 from app.llm.gemini import GeminiClient
@@ -53,14 +54,17 @@ def run_generation(
     if hasattr(llm, "reset_usage"):
         llm.reset_usage()  # fresh per-generation token tally
     assembler = assembler or default_assembler()
-    logo_ref = receiver.logo_asset or sender.logo_asset
+
+    # deterministic image selection: match the extracted images to the template's slots
+    image_by_block = assign_images(template, sender, receiver)
+    hero_hint = next(iter(image_by_block.values()), None)  # representative asset id for the draft prompt
 
     # 1) draft (grounded + cited, controlled generation)
     draft = draft_article(sender, receiver, prompt, template,
-                          llm=llm, assembler=assembler, logo_ref=logo_ref)
+                          llm=llm, assembler=assembler, logo_ref=hero_hint)
 
     # 2) map onto template + enforce limits in code (+ targeted model repairs)
-    repair = map_and_repair(draft, template, llm=llm, logo_ref=logo_ref)
+    repair = map_and_repair(draft, template, llm=llm, image_by_block=image_by_block)
 
     # 3) reports
     constraints = build_report(repair.blocks, template, repair)

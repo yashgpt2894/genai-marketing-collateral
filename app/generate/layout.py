@@ -45,7 +45,8 @@ class RepairResult:
     iterations: int = 0
 
 
-def _coerce_structural(blocks: list[FilledBlock], template: TemplateSpec, logo_ref: str | None) -> list[FilledBlock]:
+def _coerce_structural(blocks: list[FilledBlock], template: TemplateSpec,
+                       image_by_block: dict[str, str]) -> list[FilledBlock]:
     spec_ids = {b.id for b in template.blocks}
     # drop blocks the template doesn't define
     kept = [b for b in blocks if b.id in spec_ids]
@@ -54,9 +55,11 @@ def _coerce_structural(blocks: list[FilledBlock], template: TemplateSpec, logo_r
         b = by_id.get(spec.id)
         if b is None:
             continue
-        # attach logo to the image-placeholder block if the model didn't
-        if spec.image_placeholder and not b.image_ref and logo_ref:
-            b.image_ref = logo_ref
+        # attach the per-slot selected image if the model didn't supply one
+        if spec.image_placeholder and not b.image_ref:
+            ref = image_by_block.get(spec.id)
+            if ref:
+                b.image_ref = ref
         # coerce a required theme color
         if spec.theme_color:
             b.color = spec.theme_color
@@ -68,14 +71,14 @@ def map_and_repair(
     template: TemplateSpec,
     *,
     llm: GeminiClient | None = None,
-    logo_ref: str | None = None,
+    image_by_block: dict[str, str] | None = None,
 ) -> RepairResult:
     settings = get_settings()
     llm = llm or GeminiClient(settings)
 
     blocks = [FilledBlock(id=b.id, type=b.type, text=b.text, citations=list(b.citations),
                           image_ref=b.image_ref, color=b.color) for b in draft.blocks]
-    blocks = _coerce_structural(blocks, template, logo_ref)
+    blocks = _coerce_structural(blocks, template, image_by_block or {})
 
     res = RepairResult(blocks=blocks)
     by_id = {b.id: b for b in blocks}

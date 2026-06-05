@@ -33,6 +33,20 @@ class BlockType(str, Enum):
     CTA = "cta"
 
 
+def classify_image_kind(width: Optional[int], height: Optional[int]) -> str:
+    """Rough image-type guess from pixel dimensions: logo | chart | photo | image.
+    Framework-free so both the parser and the image selector can share it."""
+    if not width or not height:
+        return "image"
+    longest = max(width, height)
+    aspect = width / height
+    if longest <= 256 and 0.3 <= aspect <= 3.0:
+        return "logo"      # small, roughly square mark
+    if aspect >= 1.8 or aspect <= 0.55:
+        return "chart"     # wide/tall banner or chart
+    return "photo"         # large, photo-ish
+
+
 @dataclass(frozen=True)
 class BlockSpec:
     """A slot in the layout template. The hard contract the article must satisfy."""
@@ -42,6 +56,7 @@ class BlockSpec:
     max_words: int
     image_placeholder: bool = False
     theme_color: Optional[str] = None  # hex without '#', must be in the palette
+    image_role: Optional[str] = None   # image slots: 'logo' | 'photo' | 'chart' (which kind to place)
 
 
 @dataclass(frozen=True)

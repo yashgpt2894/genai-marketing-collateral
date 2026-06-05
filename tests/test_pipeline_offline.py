@@ -21,7 +21,7 @@ import pytest  # noqa: E402
 pytest.importorskip("pydantic", reason="runtime deps not installed in this environment")
 
 from app.schemas import (  # noqa: E402
-    ArticleDraft, CompanyBrief, DraftBlock, Fact,
+    ArticleDraft, CompanyBrief, DraftBlock, Fact, ImageAsset,
 )
 from app.constraints_core import BlockType  # noqa: E402
 from app.generate.pipeline import run_generation  # noqa: E402
@@ -62,6 +62,10 @@ def _brief(role, prefix):
         key_stats=["30% less idle time"],
         facts=[Fact(id=f"{prefix}.fact.1", text="supporting fact", kind="fact", source_page=1)],
         logo_asset=f"{prefix}_logo" if role == "receiver" else None,
+        images=[
+            ImageAsset(id=f"{prefix}_logo", kind="logo", path=f"{prefix}_logo", width=120, height=120),
+            ImageAsset(id=f"{prefix}_hero", kind="photo", path=f"{prefix}_hero", width=1200, height=800),
+        ],
     )
 
 
@@ -82,9 +86,9 @@ def test_pipeline_repairs_and_reports():
     assert "body" in result.constraints.repaired_blocks
     assert result.constraints_ok, f"violations: {result.constraints.violations}"
 
-    # logo got attached to the image-placeholder block
+    # the photo-role hero slot gets a photo (sender's, sender-first), not a logo
     hero = next(b for b in result.blocks if b.id == "hero")
-    assert hero.image_ref == "recv_logo"
+    assert hero.image_ref == "send_hero"
 
     # required theme color coerced onto the headline
     headline = next(b for b in result.blocks if b.id == "headline")
