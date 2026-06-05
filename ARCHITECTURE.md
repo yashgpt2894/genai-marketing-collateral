@@ -75,6 +75,40 @@ Storage is already tenant-keyed, so it's an auth-claim change, not a refactor.
 
 ---
 
+## Security & responsible AI
+
+Mapped to ML6's **Safe & Secure / Responsible AI** pillars — implemented vs the production-hardening posture.
+
+**Implemented**
+- **Prompt-injection defense** (untrusted PDFs). Document text is a separate **DATA channel**, never
+  concatenated into the instruction block; the system prompt forbids obeying instructions inside it
+  (`INJECTION_GUARD`); the writer sees only **distilled facts**, not raw PDF text.
+- **Grounded, cited, no fabrication.** The writer uses only source-tagged brief facts, tags each block
+  with the fact-ids it used, and **abstains** rather than inventing; a claim-level faithfulness check
+  flags unsupported/dangling citations. **Logos/images are extracted bytes** (PyMuPDF), never generated —
+  so no fabricated brand assets.
+- **Graceful failure.** The repair loop is capped; a still-over-limit block degrades to sentence-boundary
+  truncation and is flagged (`truncated_blocks`) — never a broken doc or an infinite loop.
+- **Least-privilege + no secrets.** Cloud Run runs as a scoped service account (no API key — Vertex via
+  ADC; the SA holds only `datastore.user`, `aiplatform.user`, bucket `objectAdmin`, `pubsub.publisher`).
+  Secrets stay out of git (`.env` git-ignored, `.env.example` only).
+- **Encryption · residency · retention.** GCS is **CMEK**-encrypted; storage (GCS + Firestore) is in
+  **EU `europe-west1`**; a bucket lifecycle rule deletes objects after 365 days; `DELETE /assets/{…}` and
+  `DELETE /templates/{…}` give explicit removal.
+- **Reproducibility + cost.** Every output stamps the prompt / template / model version and token + USD cost.
+
+**Production-hardening posture (decided, not yet provisioned)**
+- **Model Armor** on Vertex (content-safety / jailbreak + prompt-injection filtering in front of the model).
+- **VPC-SC** perimeter around the data services; **Secret Manager** (if a key path is ever introduced).
+- **DLP / PII detection** on uploads (today PII is handled by residency + retention + least-privilege, not
+  scanning); **EU model residency** (calls currently use the `global` Vertex endpoint); per-tenant
+  **rate / cost budgets**.
+
+*(No human-approval gate: the API emits a **reviewable draft** and never publishes, so review lives where
+the JSON is consumed — a formal gate would only enter with a publish/send action.)*
+
+---
+
 ## Components
 
 | Plane | GCP service | Role |
@@ -146,16 +180,13 @@ generate job links straight to its `ArticleJSON` because the output reuses the j
 
 ---
 
-## Limits, failures & security
+## Limits & failure modes
 
 - **Status codes:** `401` missing/invalid token · `403` IAM (no `run.invoker`) · `404` unknown id ·
   `409` briefs not ready / id conflict (built-in or duplicate) · `413` upload over `MAX_UPLOAD_MB`
   (default 10 MB) · `422` invalid body (Pydantic + template validation) · `503` model not configured.
 - **Idempotency:** an `Idempotency-Key` header on `/generate` makes a retried POST return the same job;
   uploads are idempotent per `(role, filename)`.
-- **Prompt-injection posture:** PDFs are untrusted input — document text is a separate **DATA channel**,
-  the system prompt forbids obeying instructions inside it (`INJECTION_GUARD`), the writer sees only
-  distilled facts and **abstains** rather than inventing. (Model Armor on Vertex is the production add.)
 - **Fail-open add-ons:** the result cache and the metrics export never break a request — a Redis/BigQuery
   outage degrades to "no cache" / "no row", not a `5xx`.
 - **Scaling:** Cloud Run scales **0 → 10** instances; the heavy work (parse, generate) runs **off the
