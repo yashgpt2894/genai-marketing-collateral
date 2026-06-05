@@ -134,6 +134,30 @@ Postman can also import `openapi.json` (or the live `/openapi.json`) to generate
 
 ---
 
+## Model configuration
+
+The model is **not** a Google Cloud setting — it's a set of **env vars** the app passes to Vertex AI
+(`GOOGLE_GENAI_USE_VERTEXAI=true`, so calls use the Cloud Run service account's ADC — no API key).
+Each role is independently swappable:
+
+| Env var | Role | Default |
+|---|---|---|
+| `MODEL_WRITER` | article writer (quality) | `gemini-2.5-pro` |
+| `MODEL_PARSER` | multimodal PDF → brief | `gemini-2.5-flash` |
+| `MODEL_CHEAP` | verify / repair | `gemini-2.5-flash` |
+
+**Precedence (last wins):** code defaults in `app/config.py` → Terraform (`model_writer` / `model_flash`
+→ env) → the **live Cloud Run env vars** — the source of truth for the deployed service.
+
+**To change one:** set the env var — `gcloud run services update collateral-api --region=<r>
+--update-env-vars MODEL_WRITER=<id>` (or the console's *Variables & Secrets*), or change it in Terraform
+and `apply`. The id must be a model **available to the project at `GOOGLE_CLOUD_LOCATION`** (set to
+`global`, since `europe-west1` serves no Gemini for this project — *storage* still stays in-region);
+today that's `gemini-2.5-pro` / `gemini-2.5-flash`. An unavailable id fails with a clear `4xx`, never
+silently. The writer model is stamped on every output (`meta.model_writer`) for reproducibility.
+
+---
+
 ## Roadmap (what's deliberately deferred)
 - **Multi-tenancy:** derive `tenant_id` from the verified token claim (not a header); per-tenant
   CMEK + Firestore partition + rate/cost budgets. *(Plumbing already in place.)*
