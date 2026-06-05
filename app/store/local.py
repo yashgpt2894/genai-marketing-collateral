@@ -70,7 +70,9 @@ class LocalStore:
 
     def load_asset(self, tenant: str, pair_id: str, asset_id: str) -> Optional[tuple[bytes, str]]:
         d = self._pair_dir(tenant, pair_id) / "assets"
-        matches = sorted(d.glob(f"{_safe(asset_id)}.*")) if d.exists() else []
+        # newest first, so a re-uploaded asset wins over a stale one with a different extension
+        matches = sorted(d.glob(f"{_safe(asset_id)}.*"),
+                         key=lambda p: p.stat().st_mtime, reverse=True) if d.exists() else []
         if not matches:
             return None
         p = matches[0]

@@ -9,6 +9,7 @@ generate many Sender->Receiver pairs.
 """
 from __future__ import annotations
 
+import hashlib
 import logging
 from typing import Literal, Optional
 
@@ -34,6 +35,13 @@ def _logo_id(images: list[ImageAsset]) -> Optional[str]:
     return next((a.id for a in images if a.kind == "logo"), None)
 
 
+def _doc_prefix(role: str, idx: int, data: bytes) -> str:
+    """Content-addressed asset-id prefix. A different PDF yields different asset ids,
+    so re-uploading to the same pair can never leak a stale image from the old PDF
+    into a new generation; an identical PDF yields the same ids (idempotent)."""
+    return f"{role}{idx}_{hashlib.sha1(data).hexdigest()[:8]}"
+
+
 def build_brief(
     store: Store,
     tenant: str,
@@ -51,7 +59,7 @@ def build_brief(
     images: list[ImageAsset] = []
     raw_texts: list[str] = []
     for i, data in enumerate(pdf_blobs):
-        text, extracted = extract_text_and_assets(data, f"{role}{i}")
+        text, extracted = extract_text_and_assets(data, _doc_prefix(role, i, data))
         clean, flags = sanitize_text(text)
         if flags:
             log.warning("role=%s file#%d injection-like text neutralised: %s", role, i, flags)

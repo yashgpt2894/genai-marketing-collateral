@@ -76,7 +76,9 @@ class CloudStore:
 
     def load_asset(self, tenant: str, pair_id: str, asset_id: str) -> Optional[tuple[bytes, str]]:
         prefix = f"{self._prefix(tenant, pair_id)}/assets/{_seg(asset_id)}."
-        blobs = list(self._bucket.list_blobs(prefix=prefix))
+        # newest first, so a re-uploaded asset wins over a stale one with a different extension
+        blobs = sorted(self._bucket.list_blobs(prefix=prefix),
+                       key=lambda b: b.updated or b.time_created, reverse=True)
         if not blobs:
             return None
         b = blobs[0]

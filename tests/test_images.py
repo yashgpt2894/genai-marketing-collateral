@@ -70,3 +70,14 @@ def test_assign_uses_receiver_as_fallback():
     got = assign_images(_TPL, sender, receiver)
     assert got["logo"] == "recv_logo_0"
     assert got["hero"] == "recv_photo_1"
+
+
+def test_asset_ids_are_content_addressed():
+    """A different PDF must yield different asset-id prefixes, so re-uploading to the
+    same pair can't reuse ids and leak a stale image; identical bytes -> same prefix."""
+    from app.ingest.brief_builder import _doc_prefix
+    a = _doc_prefix("receiver", 0, b"PDF-A-bytes")
+    b = _doc_prefix("receiver", 0, b"PDF-B-different-content")
+    assert a != b                                              # different content -> different ids
+    assert _doc_prefix("receiver", 0, b"PDF-A-bytes") == a     # same content -> same ids (idempotent)
+    assert a.startswith("receiver0_")                          # keeps the role+index shape
