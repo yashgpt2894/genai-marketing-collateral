@@ -50,6 +50,28 @@ where the JSON is consumed. A formal approval gate enters only if we add a publi
 
 ---
 
+## Authentication vs authorization
+
+Every data route is guarded by **two distinct checks**, and a single Google **ID token** (a
+Google-signed OIDC JWT carrying `email`, `aud`, `exp`) satisfies both:
+
+- **Authentication — *who are you?*** In-app, `require_identity` verifies the ID token against
+  Google's public certs (signature, expiry, and `aud` = the service URL) and takes the `email`
+  claim as the principal. Missing/invalid → **401**. Declared as an OpenAPI `HTTPBearer` scheme,
+  so the requirement shows on every protected route.
+- **Authorization — *allowed to do this?*** Cloud Run IAM checks the caller's token grants
+  `roles/run.invoker` on the service, at the platform edge. No grant → **403**, before the app runs.
+
+On the wire: `Authorization: Bearer <id-token>` → the **edge** runs the IAM authorization check →
+the **app** authenticates and resolves the principal. Defense in depth: one token, two independent
+gates (platform + application).
+
+**Fine-grained (per-tenant) authorization** is the next step: bind `tenant_id` to a verified token
+claim instead of the `X-Tenant-ID` header, so a principal can reach only its own tenant's documents.
+Storage is already tenant-keyed, so it's an auth-claim change, not a refactor.
+
+---
+
 ## Components
 
 | Plane | GCP service | Role |
