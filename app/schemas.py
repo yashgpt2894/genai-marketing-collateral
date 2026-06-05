@@ -7,9 +7,10 @@ controlled-generation response schemas for Gemini. Small converters bridge the t
 """
 from __future__ import annotations
 
+import re
 from typing import Literal, Optional
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 
 from app.constraints_core import (
     BlockSpec, BlockType, FilledBlock, TemplateSpec,
@@ -81,11 +82,37 @@ class BlockSpecModel(BaseModel):
     theme_color: Optional[str] = None
 
 
+_HEX6 = re.compile(r"^[0-9A-Fa-f]{6}$")
+
+
 class TemplateModel(BaseModel):
-    id: str
-    name: str
+    id: str = Field(pattern=r"^[a-z0-9][a-z0-9_-]{0,63}$",
+                    description="slug id: lowercase letters/digits, '-' or '_'")
+    name: str = Field(min_length=1, max_length=120)
     blocks: list[BlockSpecModel]
     palette: list[str]
+
+    @model_validator(mode="after")
+    def _check(self) -> "TemplateModel":
+        if not self.blocks:
+            raise ValueError("template needs at least one block")
+        ids = [b.id for b in self.blocks]
+        if len(ids) != len(set(ids)):
+            raise ValueError("block ids must be unique")
+        if not self.palette:
+            raise ValueError("palette needs at least one colour")
+        for c in self.palette:
+            if not _HEX6.match(c):
+                raise ValueError(f"palette colour '{c}' must be 6-digit hex (no '#')")
+        for b in self.blocks:
+            if b.min_words < 0 or b.max_words < 1 or b.max_words < b.min_words:
+                raise ValueError(f"block '{b.id}': need 0 <= min_words <= max_words and max_words >= 1")
+            if b.theme_color is not None:
+                if not _HEX6.match(b.theme_color):
+                    raise ValueError(f"block '{b.id}': theme_color '{b.theme_color}' must be 6-digit hex")
+                if b.theme_color not in self.palette:
+                    raise ValueError(f"block '{b.id}': theme_color must be one of the palette colours")
+        return self
 
     @classmethod
     def from_spec(cls, t: TemplateSpec) -> "TemplateModel":

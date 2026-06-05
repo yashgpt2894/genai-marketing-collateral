@@ -59,6 +59,7 @@ where the JSON is consumed. A formal approval gate enters only if we add a publi
 | Async parse | **Pub/Sub** + **Cloud Run** push worker | decoupled, idempotent, retried + DLQ |
 | Parsing | **PyMuPDF** + **Gemini 2.5 Flash** (Document AI = managed scale swap) | image/logo assets + multimodal meaning |
 | Generation | deterministic pipeline on Cloud Run | assemble → draft → map → validate → repair |
+| Templates | built-in (code) + **custom via `POST /templates`** (Firestore, tenant-scoped) | the hard layout contract |
 | Model | **Vertex AI** — Gemini 2.5 Pro / Flash | via the Cloud Run service account (no API key) |
 | Retrieval | long-context + (prod) context caching; structured facts in Firestore | bounded 2-company corpus |
 | Storage | **Cloud Storage** (CMEK) · **Firestore** | PDFs/assets · briefs/jobs/outputs |
@@ -80,7 +81,8 @@ where the JSON is consumed. A formal approval gate enters only if we add a publi
 | `POST /generate` | Bearer | `{pair_id, prompt, template_id}` · `Idempotency-Key?` | `202` `{job_id, poll}` |
 | `GET  /generate/{pair}/{job}` | Bearer | — | `{status, result: ArticleJSON}` |
 | `GET  /companies/{pair}` · `GET /templates` · `GET /assets/{pair}/{id}` | Bearer | — | briefs · templates · image |
-| `GET  /healthz` · `GET /` | public | — | liveness · UI |
+| `POST /templates` | Bearer | `TemplateModel` (id, name, blocks[], palette[]) | `201` validated template (tenant-scoped) |
+| `GET  /health` · `/healthz` · `GET /` | public | — | liveness · UI |
 
 Full machine-readable spec is the app's auto-generated **OpenAPI** at `/openapi.json` (interactive
 Swagger UI at `/docs`), where the `HTTPBearer` security scheme is attached to every protected route.

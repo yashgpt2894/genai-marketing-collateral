@@ -23,7 +23,24 @@
         "method": "GET",
         "header": [],
         "url": { "raw": "{{baseUrl}}/templates", "host": ["{{baseUrl}}"], "path": ["templates"] },
-        "description": "Lists the layout templates (one_pager_v1, two_column_v1). Also the recommended liveness check — use this instead of /healthz, which Google's front end shadows on *.run.app."
+        "description": "Lists the layout templates (built-in + any this tenant has created). Also the recommended liveness check — use this instead of /healthz, which Google's front end shadows on *.run.app."
+      }
+    },
+    {
+      "name": "Create template",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Content-Type", "value": "application/json" },
+          { "key": "X-Tenant-ID", "value": "{{tenant}}", "type": "text", "disabled": true }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\"id\": \"promo_card_v1\", \"name\": \"Promo card\", \"palette\": [\"0FB5A6\", \"10151E\", \"FFFFFF\"], \"blocks\": [{\"id\": \"headline\", \"type\": \"heading\", \"min_words\": 3, \"max_words\": 8, \"theme_color\": \"0FB5A6\"}, {\"id\": \"body\", \"type\": \"body\", \"min_words\": 20, \"max_words\": 95}, {\"id\": \"cta\", \"type\": \"cta\", \"min_words\": 3, \"max_words\": 12}]}",
+          "options": { "raw": { "language": "json" } }
+        },
+        "url": { "raw": "{{baseUrl}}/templates", "host": ["{{baseUrl}}"], "path": ["templates"] },
+        "description": "Create a custom layout template (tenant-scoped). After this it appears in GET /templates and the UI dropdown, and can be passed as template_id to /generate. Validated: unique block ids, min<=max words, 6-digit hex palette, each block theme_color must be one of the palette colours. 201 on success; 409 if the id collides with a built-in or an existing template; 422 on a malformed body. Block types: heading, subheading, body, caption, cta."
       }
     },
     {

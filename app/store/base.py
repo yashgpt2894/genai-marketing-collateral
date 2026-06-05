@@ -16,7 +16,7 @@ from __future__ import annotations
 
 from typing import Optional, Protocol
 
-from app.schemas import ArticleJSON, CompanyBrief
+from app.schemas import ArticleJSON, CompanyBrief, TemplateModel
 
 _CONTENT_TYPES = {
     "png": "image/png", "jpg": "image/jpeg", "jpeg": "image/jpeg",
@@ -64,3 +64,8 @@ class Store(Protocol):
     # -- outputs ---------------------------------------------------------------
     def save_output(self, tenant: str, pair_id: str, result: ArticleJSON) -> None: ...
     def load_output(self, tenant: str, pair_id: str, request_id: str) -> Optional[ArticleJSON]: ...
+
+    # -- custom templates (tenant-scoped; built-ins live in templates_def) ------
+    def save_template(self, tenant: str, template: TemplateModel) -> None: ...
+    def list_templates(self, tenant: str) -> list[TemplateModel]: ...
+    def load_template(self, tenant: str, template_id: str) -> Optional[TemplateModel]: ...

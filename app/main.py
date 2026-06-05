@@ -4,9 +4,10 @@ FastAPI app — the two endpoints from the brief, plus supporting routes and the
   POST /companies/{pair_id}/documents   upload sender/receiver PDFs -> parse -> briefs
   POST /generate                        {pair_id, prompt, template_id} -> ArticleJSON
 
-  GET  /templates            list templates
+  GET  /templates            list templates (built-in + tenant custom)
+  POST /templates            create a custom template (tenant-scoped)
   GET  /companies/{pair_id}  the stored briefs
-  GET  /healthz              liveness + whether the LLM is configured
+  GET  /health · /healthz    liveness + whether the LLM is configured
   GET  /                     the demo UI (static)
 
 Design notes:
@@ -41,6 +42,7 @@ from fastapi.staticfiles import StaticFiles
 from app.auth import require_identity
 from app.cache import brief_fingerprint, gen_cache_key, get_cache, load_cached
 from app.config import get_settings
+from app.constraints_core import TemplateSpec
 from app.generate.pipeline import run_generation
 from app.metrics import emit_generation_metric
 from app.ingest.brief_builder import build_brief
@@ -89,8 +91,39 @@ def healthz():
 
 
 @app.get("/templates", response_model=list[TemplateModel])
-def templates(principal: str = Depends(require_identity)):
-    return [TemplateModel.from_spec(t) for t in list_templates()]
+def templates(tenant: str = Depends(get_tenant), principal: str = Depends(require_identity)):
+    """Built-in templates plus any this tenant has created."""
+    return [TemplateModel.from_spec(t) for t in list_templates()] + store.list_templates(tenant)
+
+
+@app.post("/templates", status_code=201, response_model=TemplateModel)
+def create_template(t: TemplateModel, tenant: str = Depends(get_tenant),
+                    principal: str = Depends(require_identity)):
+    """Create a custom layout template (tenant-scoped). It then shows up in GET /templates
+    and the UI dropdown, and can be passed as `template_id` to /generate. The body is
+    validated (unique block ids, min<=max words, hex palette, theme colours in palette)."""
+    if t.id in {bt.id for bt in list_templates()}:
+        raise HTTPException(status_code=409, detail=f"'{t.id}' is a built-in template id; choose another")
+    if store.load_template(tenant, t.id) is not None:
+        raise HTTPException(status_code=409, detail=f"template '{t.id}' already exists for this tenant")
+    try:
+        t.to_spec()  # must map cleanly onto the framework-free core contract
+    except Exception as e:
+        raise HTTPException(status_code=422, detail=f"invalid template: {e}")
+    store.save_template(tenant, t)
+    log.info("created template '%s' for tenant=%s (by %s)", t.id, tenant, principal)
+    return t
+
+
+def resolve_template(tenant: str, template_id: str) -> TemplateSpec:
+    """Built-in templates first, then this tenant's custom ones."""
+    try:
+        return get_template(template_id)
+    except KeyError:
+        custom = store.load_template(tenant, template_id)
+        if custom is None:
+            raise KeyError(f"unknown template '{template_id}'")
+        return custom.to_spec()
 
 
 @app.get("/companies/{pair_id}", response_model=BriefsResponse)
@@ -236,7 +269,7 @@ def generate(req: GenerateRequest, background: BackgroundTasks,
             f"Upload documents for both roles first."
         ))
     try:
-        template = get_template(req.template_id)
+        template = resolve_template(tenant, req.template_id)
     except KeyError as e:
         raise HTTPException(status_code=404, detail=str(e))
 
