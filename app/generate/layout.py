@@ -55,11 +55,10 @@ def _coerce_structural(blocks: list[FilledBlock], template: TemplateSpec,
         b = by_id.get(spec.id)
         if b is None:
             continue
-        # attach the per-slot selected image if the model didn't supply one
-        if spec.image_placeholder and not b.image_ref:
-            ref = image_by_block.get(spec.id)
-            if ref:
-                b.image_ref = ref
+        # image choice is deterministic — the code owns it; override whatever the model emitted
+        # (the model tends to echo a fact id here; never trust it for an asset reference)
+        if spec.image_placeholder:
+            b.image_ref = image_by_block.get(spec.id)
         # coerce a required theme color
         if spec.theme_color:
             b.color = spec.theme_color
