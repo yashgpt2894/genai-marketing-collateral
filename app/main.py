@@ -6,7 +6,9 @@ FastAPI app — the two endpoints from the brief, plus supporting routes and the
 
   GET  /templates            list templates (built-in + tenant custom)
   POST /templates            create a custom template (tenant-scoped)
+  PUT  /templates/{id}       edit a custom template  ·  DELETE /templates/{id}  delete it
   GET  /companies/{pair_id}  the stored briefs
+  GET  /assets/{pair}/{id}   serve an extracted image  ·  DELETE /assets/{pair}/{id}  delete it
   GET  /health · /healthz    liveness + whether the LLM is configured
   GET  /                     the demo UI (static)
 
@@ -113,6 +115,37 @@ def create_template(t: TemplateModel, tenant: str = Depends(get_tenant),
     store.save_template(tenant, t)
     log.info("created template '%s' for tenant=%s (by %s)", t.id, tenant, principal)
     return t
+
+
+@app.put("/templates/{template_id}", response_model=TemplateModel)
+def update_template(template_id: str, t: TemplateModel, tenant: str = Depends(get_tenant),
+                    principal: str = Depends(require_identity)):
+    """Replace a custom template (full update). Built-in templates are read-only."""
+    if template_id in {bt.id for bt in list_templates()}:
+        raise HTTPException(status_code=409, detail=f"'{template_id}' is a built-in template (read-only)")
+    if t.id != template_id:
+        raise HTTPException(status_code=400, detail=f"body id '{t.id}' must match the path id '{template_id}'")
+    if store.load_template(tenant, template_id) is None:
+        raise HTTPException(status_code=404, detail=f"template '{template_id}' not found for this tenant")
+    try:
+        t.to_spec()
+    except Exception as e:
+        raise HTTPException(status_code=422, detail=f"invalid template: {e}")
+    store.save_template(tenant, t)
+    log.info("updated template '%s' for tenant=%s (by %s)", template_id, tenant, principal)
+    return t
+
+
+@app.delete("/templates/{template_id}")
+def delete_template(template_id: str, tenant: str = Depends(get_tenant),
+                    principal: str = Depends(require_identity)):
+    """Delete a custom template. Built-in templates cannot be deleted."""
+    if template_id in {bt.id for bt in list_templates()}:
+        raise HTTPException(status_code=409, detail=f"'{template_id}' is a built-in template (cannot be deleted)")
+    if not store.delete_template(tenant, template_id):
+        raise HTTPException(status_code=404, detail=f"template '{template_id}' not found for this tenant")
+    log.info("deleted template '%s' for tenant=%s (by %s)", template_id, tenant, principal)
+    return {"deleted": template_id}
 
 
 def resolve_template(tenant: str, template_id: str) -> TemplateSpec:
@@ -314,6 +347,16 @@ def get_asset(pair_id: str, asset_id: str, tenant: str = Depends(get_tenant),
         raise HTTPException(status_code=404, detail="asset not found")
     data, content_type = found
     return Response(content=data, media_type=content_type)
+
+
+@app.delete("/assets/{pair_id}/{asset_id}")
+def delete_asset(pair_id: str, asset_id: str, tenant: str = Depends(get_tenant),
+                 principal: str = Depends(require_identity)):
+    """Delete an extracted image/logo asset (id without extension)."""
+    if not store.delete_asset(tenant, pair_id, asset_id):
+        raise HTTPException(status_code=404, detail=f"asset '{asset_id}' not found for pair '{pair_id}'")
+    log.info("deleted asset '%s' tenant=%s pair=%s (by %s)", asset_id, tenant, pair_id, principal)
+    return {"deleted": asset_id}
 
 
 # --- static UI (mounted last so it doesn't shadow the API routes) ------------

@@ -24,9 +24,10 @@ parse → ground → draft (cited) → map to template → validate & repair →
 | `POST /companies/{pair_id}/documents` | Bearer | Upload sender/receiver PDFs. Parsed **async** (Pub/Sub → worker: Gemini multimodal for meaning + PyMuPDF for image/logo assets) into a typed, source-tagged `CompanyBrief`. Returns a `job_id`. |
 | `POST /generate` | Bearer | `{pair_id, prompt, template_id}` → **`202` + `job_id`** (never blocks the request). Poll `GET /generate/{pair_id}/{job_id}` → `ArticleJSON` (+ citations, confidence, **token/cost**). An `Idempotency-Key` header makes retries return the same job. |
 
-Supporting: `GET /templates` · **`POST /templates`** (create a custom, validated template — tenant-scoped,
-then usable as `template_id` and shown in the UI dropdown) · `/companies/{pair_id}` · `/jobs/{pair_id}/{job_id}` ·
-`/assets/{pair_id}/{id}` · `/health` · the UI at `/` · and `/internal/parse` (the Pub/Sub push worker). Machine-readable spec:
+Supporting: `GET /templates` · **`POST` / `PUT` / `DELETE /templates`** (create / edit / delete a custom,
+validated template — tenant-scoped, built-ins read-only, usable as `template_id` and shown in the UI dropdown) ·
+`/companies/{pair_id}` · `/jobs/{pair_id}/{job_id}` · `GET`+`DELETE /assets/{pair_id}/{id}` · `/health` ·
+the UI at `/` · and `/internal/parse` (the Pub/Sub push worker). Machine-readable spec:
 **`/openapi.json`** (Swagger at `/docs`) — the `HTTPBearer` scheme is attached to every protected route.
 A committed snapshot is in **`openapi.json`**, and a ready-to-import **`postman_collection.json`**
 (base URL preset; a test script auto-captures `job_id` for the poll) sits at the repo root.

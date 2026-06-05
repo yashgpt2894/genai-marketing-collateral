@@ -91,3 +91,47 @@ def test_create_list_and_generate_with_custom_template(tmp_path):
     res = client.get(f"/generate/p1/{g.json()['job_id']}").json()
     assert res["status"] == "done", res
     assert res["result"]["template_id"] == "promo_card_v1"                   # custom template resolved + used
+
+
+def test_localstore_delete_roundtrips(tmp_path):
+    from app.store.local import LocalStore
+    s = LocalStore(root=tmp_path)
+    s.save_template("t1", TemplateModel.model_validate(_good()))
+    assert s.delete_template("t1", "promo_card_v1") is True
+    assert s.load_template("t1", "promo_card_v1") is None
+    assert s.delete_template("t1", "promo_card_v1") is False                  # already gone
+    s.save_asset("t1", "p1", "logo", "png", b"\x89PNG\r\n")
+    assert s.load_asset("t1", "p1", "logo") is not None
+    assert s.delete_asset("t1", "p1", "logo") is True
+    assert s.load_asset("t1", "p1", "logo") is None
+    assert s.delete_asset("t1", "p1", "logo") is False                        # already gone
+
+
+def test_edit_and_delete_template_endpoints(tmp_path):
+    client = _client(tmp_path)
+    tpl = _good()
+    assert client.post("/templates", json=tpl).status_code == 201
+    edited = {**tpl, "name": "Promo card v2", "blocks": [dict(b) for b in tpl["blocks"]]}
+    edited["blocks"][1]["max_words"] = 120
+    r = client.put("/templates/promo_card_v1", json=edited)
+    assert r.status_code == 200, r.text
+    assert r.json()["name"] == "Promo card v2"
+    got = [t for t in client.get("/templates").json() if t["id"] == "promo_card_v1"][0]
+    assert got["name"] == "Promo card v2"                                     # edit persisted
+    assert client.put("/templates/one_pager_v1", json={**tpl, "id": "one_pager_v1"}).status_code == 409   # built-in
+    assert client.put("/templates/promo_card_v1", json={**tpl, "id": "other"}).status_code == 400          # id mismatch
+    assert client.put("/templates/missing_v1", json={**tpl, "id": "missing_v1"}).status_code == 404         # not found
+    assert client.delete("/templates/one_pager_v1").status_code == 409        # built-in protected
+    assert client.delete("/templates/promo_card_v1").status_code == 200       # deleted
+    assert "promo_card_v1" not in [t["id"] for t in client.get("/templates").json()]
+    assert client.delete("/templates/promo_card_v1").status_code == 404       # already gone
+
+
+def test_delete_asset_endpoint(tmp_path):
+    import app.main as main
+    client = _client(tmp_path)
+    main.store.save_asset("default", "p1", "logo", "png", b"\x89PNG\r\n")
+    assert client.get("/assets/p1/logo").status_code == 200
+    assert client.delete("/assets/p1/logo").status_code == 200
+    assert client.get("/assets/p1/logo").status_code == 404                   # gone
+    assert client.delete("/assets/p1/logo").status_code == 404                # already gone

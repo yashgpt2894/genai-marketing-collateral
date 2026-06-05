@@ -13,6 +13,7 @@
     { "key": "pair_id", "value": "demo1" },
     { "key": "job_id", "value": "" },
     { "key": "asset_id", "value": "receiver0_img_1_0" },
+    { "key": "template_id", "value": "promo_card_v1" },
     { "key": "tenant", "value": "" },
     { "key": "token", "value": "" }
   ],
@@ -41,6 +42,34 @@
         },
         "url": { "raw": "{{baseUrl}}/templates", "host": ["{{baseUrl}}"], "path": ["templates"] },
         "description": "Create a custom layout template (tenant-scoped). After this it appears in GET /templates and the UI dropdown, and can be passed as template_id to /generate. Validated: unique block ids, min<=max words, 6-digit hex palette, each block theme_color must be one of the palette colours. 201 on success; 409 if the id collides with a built-in or an existing template; 422 on a malformed body. Block types: heading, subheading, body, caption, cta."
+      }
+    },
+    {
+      "name": "Update template",
+      "request": {
+        "method": "PUT",
+        "header": [
+          { "key": "Content-Type", "value": "application/json" },
+          { "key": "X-Tenant-ID", "value": "{{tenant}}", "type": "text", "disabled": true }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\"id\": \"promo_card_v1\", \"name\": \"Promo card (edited)\", \"palette\": [\"0FB5A6\", \"10151E\", \"FFFFFF\"], \"blocks\": [{\"id\": \"headline\", \"type\": \"heading\", \"min_words\": 3, \"max_words\": 10, \"theme_color\": \"0FB5A6\"}, {\"id\": \"body\", \"type\": \"body\", \"min_words\": 20, \"max_words\": 120}, {\"id\": \"cta\", \"type\": \"cta\", \"min_words\": 3, \"max_words\": 12}]}",
+          "options": { "raw": { "language": "json" } }
+        },
+        "url": { "raw": "{{baseUrl}}/templates/{{template_id}}", "host": ["{{baseUrl}}"], "path": ["templates", "{{template_id}}"] },
+        "description": "Replace a custom template (full update). The body `id` must match the path `{{template_id}}`. Built-ins are read-only. 200 on success; 409 built-in; 400 id mismatch; 404 not found; 422 invalid body."
+      }
+    },
+    {
+      "name": "Delete template",
+      "request": {
+        "method": "DELETE",
+        "header": [
+          { "key": "X-Tenant-ID", "value": "{{tenant}}", "type": "text", "disabled": true }
+        ],
+        "url": { "raw": "{{baseUrl}}/templates/{{template_id}}", "host": ["{{baseUrl}}"], "path": ["templates", "{{template_id}}"] },
+        "description": "Delete a custom template (tenant-scoped). 200 {deleted}; 409 if it's a built-in (read-only); 404 if it doesn't exist."
       }
     },
     {
@@ -157,6 +186,17 @@
         "header": [],
         "url": { "raw": "{{baseUrl}}/assets/{{pair_id}}/{{asset_id}}", "host": ["{{baseUrl}}"], "path": ["assets", "{{pair_id}}", "{{asset_id}}"] },
         "description": "Fetch an image/logo extracted from the PDFs during parsing. asset_id is NOT arbitrary — use a real one: from GET /companies/{pair} (each brief's images[].id and logo_asset, e.g. receiver0_img_1_0) or a generated article's assets map / a block image_ref. The Poll request auto-saves one into {{asset_id}}, so after polling a done article this just works. Returns the PNG/JPEG bytes; 404 if the id is empty or doesn't exist for this pair."
+      }
+    },
+    {
+      "name": "Delete asset",
+      "request": {
+        "method": "DELETE",
+        "header": [
+          { "key": "X-Tenant-ID", "value": "{{tenant}}", "type": "text", "disabled": true }
+        ],
+        "url": { "raw": "{{baseUrl}}/assets/{{pair_id}}/{{asset_id}}", "host": ["{{baseUrl}}"], "path": ["assets", "{{pair_id}}", "{{asset_id}}"] },
+        "description": "Delete an extracted image/logo asset. 200 {deleted}; 404 if the asset_id doesn't exist for this pair."
       }
     }
   ]

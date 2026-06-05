@@ -81,6 +81,13 @@ class CloudStore:
         b = blobs[0]
         return b.download_as_bytes(), (b.content_type or content_type_for(b.name.rsplit(".", 1)[-1]))
 
+    def delete_asset(self, tenant: str, pair_id: str, asset_id: str) -> bool:
+        prefix = f"{self._prefix(tenant, pair_id)}/assets/{_seg(asset_id)}."
+        blobs = list(self._bucket.list_blobs(prefix=prefix))
+        for b in blobs:
+            b.delete()
+        return bool(blobs)
+
     # -- briefs ----------------------------------------------------------------
     def save_brief(self, tenant: str, pair_id: str, brief: CompanyBrief) -> None:
         self._coll(tenant, pair_id, "briefs").document(_seg(brief.role)).set(brief.model_dump())
@@ -122,3 +129,9 @@ class CloudStore:
     def load_template(self, tenant: str, template_id: str) -> Optional[TemplateModel]:
         snap = self._templates(tenant).document(_seg(template_id)).get()
         return TemplateModel.model_validate(snap.to_dict()) if snap.exists else None
+
+    def delete_template(self, tenant: str, template_id: str) -> bool:
+        doc = self._templates(tenant).document(_seg(template_id))
+        existed = doc.get().exists
+        doc.delete()
+        return existed

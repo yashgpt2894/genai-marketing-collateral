@@ -75,6 +75,13 @@ class LocalStore:
         p = matches[0]
         return p.read_bytes(), content_type_for(p.suffix)
 
+    def delete_asset(self, tenant: str, pair_id: str, asset_id: str) -> bool:
+        d = self._pair_dir(tenant, pair_id) / "assets"
+        matches = sorted(d.glob(f"{_safe(asset_id)}.*")) if d.exists() else []
+        for p in matches:
+            p.unlink()
+        return bool(matches)
+
     # -- briefs ----------------------------------------------------------------
     def save_brief(self, tenant: str, pair_id: str, brief: CompanyBrief) -> None:
         (self._pair_dir(tenant, pair_id) / f"{_safe(brief.role)}.json").write_text(brief.model_dump_json(indent=2))
@@ -131,3 +138,10 @@ class LocalStore:
     def load_template(self, tenant: str, template_id: str) -> Optional[TemplateModel]:
         p = self._templates_dir(tenant) / f"{_safe(template_id)}.json"
         return TemplateModel.model_validate_json(p.read_text()) if p.exists() else None
+
+    def delete_template(self, tenant: str, template_id: str) -> bool:
+        p = self._templates_dir(tenant) / f"{_safe(template_id)}.json"
+        if p.exists():
+            p.unlink()
+            return True
+        return False
