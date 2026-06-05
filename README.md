@@ -26,8 +26,8 @@ parse → ground → draft (cited) → map to template → validate & repair →
 
 Supporting: `GET /templates` · **`POST` / `PUT` / `DELETE /templates`** (create / edit / delete a custom,
 validated template — tenant-scoped, built-ins read-only, usable as `template_id` and shown in the UI dropdown) ·
-`/companies/{pair_id}` · `/jobs/{pair_id}/{job_id}` · `GET`+`DELETE /assets/{pair_id}/{id}` · `/health` ·
-the UI at `/` · and `/internal/parse` (the Pub/Sub push worker). Machine-readable spec:
+`/companies/{pair_id}` · **`GET /jobs/{pair_id}`** (list jobs, `?type`/`?status`) + `/jobs/{pair_id}/{job_id}` ·
+`GET`+`DELETE /assets/{pair_id}/{id}` · `/health` · the UI at `/` · and `/internal/parse` (the Pub/Sub push worker). Machine-readable spec:
 **`/openapi.json`** (Swagger at `/docs`) — the `HTTPBearer` scheme is attached to every protected route.
 A committed snapshot is in **`openapi.json`**, and a ready-to-import **`postman_collection.json`**
 (base URL preset; a test script auto-captures `job_id` for the poll) sits at the repo root.

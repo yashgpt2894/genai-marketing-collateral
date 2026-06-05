@@ -97,3 +97,29 @@ def test_generate_idempotency_key_dedups(tmp_path):
     j2 = client.post("/generate", json=body, headers=hdr).json()
     assert j1["job_id"] == j2["job_id"]          # same key -> same job
     assert j2.get("idempotent") is True
+
+
+# --- jobs listing ------------------------------------------------------------
+def test_set_job_enriches_and_preserves_created_at(tmp_path):
+    s = LocalStore(root=tmp_path)
+    s.set_job("default", "p1", "j1", "processing", "starting", kind="generate")
+    first = s.get_job("default", "p1", "j1")
+    assert first["kind"] == "generate" and first["created_at"] and first["status"] == "processing"
+    s.set_job("default", "p1", "j1", "done", "finished")      # no kind on update
+    upd = s.get_job("default", "p1", "j1")
+    assert upd["kind"] == "generate"                           # kind preserved
+    assert upd["created_at"] == first["created_at"]            # created_at preserved
+    assert upd["status"] == "done" and upd["updated_at"] >= first["created_at"]
+    assert [j["job_id"] for j in s.list_jobs("default", "p1")] == ["j1"]
+
+
+def test_list_jobs_endpoint_and_filters(tmp_path):
+    client = _client(tmp_path)
+    job = client.post("/generate", json={"pair_id": "p1", "prompt": "show value",
+                                         "template_id": "one_pager_v1"}).json()
+    body = client.get("/jobs/p1").json()
+    assert body["pair_id"] == "p1" and body["count"] >= 1
+    row = [x for x in body["jobs"] if x["job_id"] == job["job_id"]][0]
+    assert row["kind"] == "generate" and row["created_at"] and row["status"] == "done"
+    assert all(x["kind"] == "generate" for x in client.get("/jobs/p1?type=generate").json()["jobs"])
+    assert client.get("/jobs/p1?type=parse").json()["jobs"] == []   # no parse jobs in this setup

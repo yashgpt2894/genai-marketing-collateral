@@ -17,6 +17,7 @@ from __future__ import annotations
 
 import json
 import re
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Optional
 
@@ -95,15 +96,30 @@ class LocalStore:
         return [r for r in ("sender", "receiver") if (d / f"{r}.json").exists()]
 
     # -- jobs ------------------------------------------------------------------
-    def set_job(self, tenant: str, pair_id: str, job_id: str, status: str, message: str = "") -> None:
+    def set_job(self, tenant: str, pair_id: str, job_id: str, status: str,
+                message: str = "", kind: str = "") -> None:
         p = self._pair_dir(tenant, pair_id) / "jobs.json"
         jobs = json.loads(p.read_text()) if p.exists() else {}
-        jobs[job_id] = {"status": status, "message": message}
+        now = datetime.now(timezone.utc).isoformat()
+        prev = jobs.get(job_id, {})
+        jobs[job_id] = {
+            "status": status, "message": message,
+            "kind": kind or prev.get("kind", ""),          # set on create, preserved on update
+            "created_at": prev.get("created_at", now),
+            "updated_at": now,
+        }
         p.write_text(json.dumps(jobs, indent=2))
 
     def get_job(self, tenant: str, pair_id: str, job_id: str) -> Optional[dict]:
         p = self._pair_dir(tenant, pair_id) / "jobs.json"
         return json.loads(p.read_text()).get(job_id) if p.exists() else None
+
+    def list_jobs(self, tenant: str, pair_id: str) -> list[dict]:
+        p = self._pair_dir(tenant, pair_id) / "jobs.json"
+        jobs = json.loads(p.read_text()) if p.exists() else {}
+        out = [{"job_id": k, **v} for k, v in jobs.items()]
+        out.sort(key=lambda j: j.get("created_at", ""), reverse=True)  # newest first
+        return out
 
     # -- outputs ---------------------------------------------------------------
     def save_output(self, tenant: str, pair_id: str, result: ArticleJSON) -> None:

@@ -8,6 +8,7 @@ FastAPI app — the two endpoints from the brief, plus supporting routes and the
   POST /templates            create a custom template (tenant-scoped)
   PUT  /templates/{id}       edit a custom template  ·  DELETE /templates/{id}  delete it
   GET  /companies/{pair_id}  the stored briefs
+  GET  /jobs/{pair_id}       list jobs (parse + generate)  ·  GET /jobs/{pair}/{job}  one job
   GET  /assets/{pair}/{id}   serve an extracted image  ·  DELETE /assets/{pair}/{id}  delete it
   GET  /health · /healthz    liveness + whether the LLM is configured
   GET  /                     the demo UI (static)
@@ -35,7 +36,7 @@ from typing import Literal
 
 from fastapi import (
     BackgroundTasks, Depends, FastAPI, File, Form, Header, HTTPException,
-    Path as PathParam, Request, Response, UploadFile,
+    Path as PathParam, Query, Request, Response, UploadFile,
 )
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, JSONResponse
@@ -210,7 +211,7 @@ async def upload_documents(
         keys.append(store.save_upload(tenant, pair_id, role, f.filename or "upload.pdf", data))
 
     job_id = uuid.uuid4().hex[:12]
-    store.set_job(tenant, pair_id, job_id, "processing", f"parsing {len(keys)} file(s) for {role}")
+    store.set_job(tenant, pair_id, job_id, "processing", f"parsing {len(keys)} file(s) for {role}", kind="parse")
     payload = {"tenant": tenant, "pair_id": pair_id, "job_id": job_id, "role": role, "keys": keys}
     if get_settings().parse_backend == "pubsub":
         from app.messaging import publish_parse
@@ -223,6 +224,20 @@ async def upload_documents(
         message=f"Uploaded {len(keys)} file(s) for {role}; parsing in background.",
         briefs=store.ready_roles(tenant, pair_id),
     )
+
+
+@app.get("/jobs/{pair_id}")
+def list_jobs(pair_id: str, tenant: str = Depends(get_tenant), principal: str = Depends(require_identity),
+              job_type: str | None = Query(default=None, alias="type", description="filter: parse | generate"),
+              status: str | None = Query(default=None, description="filter: processing | done | error"),
+              limit: int = Query(default=50, ge=1, le=200)):
+    """All jobs for a pair (parse + generate), newest first. Optional type/status filters + limit."""
+    jobs = store.list_jobs(tenant, pair_id)
+    if job_type:
+        jobs = [j for j in jobs if j.get("kind") == job_type]
+    if status:
+        jobs = [j for j in jobs if j.get("status") == status]
+    return {"pair_id": pair_id, "count": len(jobs), "jobs": jobs[:limit]}
 
 
 @app.get("/jobs/{pair_id}/{job_id}")
@@ -316,7 +331,7 @@ def generate(req: GenerateRequest, background: BackgroundTasks,
                     "poll": f"/generate/{req.pair_id}/{request_id}", "idempotent": True}
     else:
         request_id = uuid.uuid4().hex[:12]
-    store.set_job(tenant, req.pair_id, request_id, "processing", f"generating article (by {principal})")
+    store.set_job(tenant, req.pair_id, request_id, "processing", f"generating article (by {principal})", kind="generate")
     background.add_task(_generate_job, tenant, req.pair_id, request_id, sender, receiver, req.prompt, template)
     return {"pair_id": req.pair_id, "job_id": request_id, "status": "processing",
             "poll": f"/generate/{req.pair_id}/{request_id}"}

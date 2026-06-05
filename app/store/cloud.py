@@ -13,6 +13,7 @@ Key scheme (tenant-first, so isolation is structural):
 from __future__ import annotations
 
 import re
+from datetime import datetime, timezone
 from typing import Any, Optional
 
 from app.config import Settings, get_settings
@@ -101,12 +102,27 @@ class CloudStore:
                 if self._coll(tenant, pair_id, "briefs").document(r).get().exists]
 
     # -- jobs ------------------------------------------------------------------
-    def set_job(self, tenant: str, pair_id: str, job_id: str, status: str, message: str = "") -> None:
-        self._coll(tenant, pair_id, "jobs").document(_seg(job_id)).set({"status": status, "message": message})
+    def set_job(self, tenant: str, pair_id: str, job_id: str, status: str,
+                message: str = "", kind: str = "") -> None:
+        doc = self._coll(tenant, pair_id, "jobs").document(_seg(job_id))
+        now = datetime.now(timezone.utc).isoformat()
+        prev = doc.get().to_dict() or {}
+        doc.set({
+            "status": status, "message": message,
+            "kind": kind or prev.get("kind", ""),          # set on create, preserved on update
+            "created_at": prev.get("created_at", now),
+            "updated_at": now,
+        })
 
     def get_job(self, tenant: str, pair_id: str, job_id: str) -> Optional[dict]:
         snap = self._coll(tenant, pair_id, "jobs").document(_seg(job_id)).get()
         return snap.to_dict() if snap.exists else None
+
+    def list_jobs(self, tenant: str, pair_id: str) -> list[dict]:
+        out = [{"job_id": d.id, **(d.to_dict() or {})}
+               for d in self._coll(tenant, pair_id, "jobs").stream()]
+        out.sort(key=lambda j: j.get("created_at", ""), reverse=True)  # newest first
+        return out
 
     # -- outputs ---------------------------------------------------------------
     def save_output(self, tenant: str, pair_id: str, result: ArticleJSON) -> None:

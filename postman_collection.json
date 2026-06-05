@@ -180,6 +180,24 @@
       }
     },
     {
+      "name": "List jobs (for a pair)",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/jobs/{{pair_id}}?type=&status=&limit=50",
+          "host": ["{{baseUrl}}"],
+          "path": ["jobs", "{{pair_id}}"],
+          "query": [
+            { "key": "type", "value": "", "description": "parse | generate", "disabled": true },
+            { "key": "status", "value": "", "description": "processing | done | error", "disabled": true },
+            { "key": "limit", "value": "50", "disabled": true }
+          ]
+        },
+        "description": "All jobs for the pair (parse + generate), newest first, each with kind/status/created_at/updated_at. Enable the query params to filter by type or status, or cap with limit."
+      }
+    },
+    {
       "name": "Get asset (extracted image)",
       "request": {
         "method": "GET",

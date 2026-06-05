@@ -77,7 +77,7 @@ where the JSON is consumed. A formal approval gate enters only if we add a publi
 | Method · path | Auth | Body / params | Returns |
 |---|---|---|---|
 | `POST /companies/{pair}/documents` | Bearer | multipart: `role`, `files[]` (PDF) | `202` `{job_id}` |
-| `GET  /jobs/{pair}/{job}` | Bearer | — | parse job status |
+| `GET  /jobs/{pair}` · `GET /jobs/{pair}/{job}` | Bearer | list: `?type` `?status` `?limit` | jobs for a pair (parse + generate), newest-first · one job |
 | `POST /generate` | Bearer | `{pair_id, prompt, template_id}` · `Idempotency-Key?` | `202` `{job_id, poll}` |
 | `GET  /generate/{pair}/{job}` | Bearer | — | `{status, result: ArticleJSON}` |
 | `GET  /companies/{pair}` · `GET /templates` · `GET /assets/{pair}/{id}` | Bearer | — | briefs · templates · image |
