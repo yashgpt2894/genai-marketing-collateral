@@ -195,7 +195,6 @@ select.field { appearance: none; cursor: pointer;
 /* placeholder / empty state */
 .placeholder { flex: 1; display: flex; align-items: center; justify-content: center; animation: fade .6s both; }
 .ph-card { max-width: 560px; text-align: center; padding: 40px; }
-.ph-kicker { font-family: var(--mono); font-size: 11px; letter-spacing: 2px; text-transform: uppercase; color: var(--teal-2); }
 .ph-card h2 { font-family: var(--display); font-weight: 500; font-size: 28px; margin: 14px 0 16px; color: var(--text); line-height: 1.2; }
 .ph-card p { color: var(--muted); font-size: 14.5px; line-height: 1.6; margin: 0 0 10px; }
 
