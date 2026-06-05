@@ -38,7 +38,7 @@
 
 * { box-sizing: border-box; }
 
-/* [hidden] must win over class/id display rules (.placeholder, .trust, .pane, …) */
+/* [hidden] must win over class/id display rules (.placeholder, .pane, …) */
 [hidden] { display: none !important; }
 
 html, body { height: 100%; }
@@ -258,6 +258,4 @@ select.field { appearance: none; cursor: pointer;
   body { overflow: auto; }
   .shell { grid-template-columns: 1fr; height: auto; }
   .rail { border-right: none; border-bottom: 1px solid var(--line); }
-  .trust { grid-template-columns: repeat(3, 1fr); }
-  .trust .flags, .trust .meta { grid-column: 1 / -1; text-align: left; }
 }
