@@ -95,7 +95,8 @@
               "var j = pm.response.json();",
               "if (j && j.job_id) {",
               "  pm.collectionVariables.set('job_id', j.job_id);",
-              "  console.log('saved job_id =', j.job_id);",
+              "  if (j.pair_id) { pm.collectionVariables.set('pair_id', j.pair_id); }",
+              "  console.log('saved pair_id=' + j.pair_id + ', job_id=' + j.job_id + ' -> open \"5. Poll generation\" and hit Send');",
               "}"
             ]
           }
@@ -123,7 +124,7 @@
         "method": "GET",
         "header": [],
         "url": { "raw": "{{baseUrl}}/generate/{{pair_id}}/{{job_id}}", "host": ["{{baseUrl}}"], "path": ["generate", "{{pair_id}}", "{{job_id}}"] },
-        "description": "Poll until status=done. The finished ArticleJSON (blocks, confidence, constraints, faithfulness, token/cost) is under `result`."
+        "description": "Open this right after Generate and hit Send — {{pair_id}} and {{job_id}} are auto-filled from the Generate response (no need to copy the poll path, and note the variable is {{baseUrl}} with a capital U). Poll until status=done; the finished ArticleJSON (blocks, confidence, constraints, faithfulness, token/cost) is under `result`."
       }
     },
     {
