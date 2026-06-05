@@ -144,9 +144,7 @@ function pollGenerate(jobId) {
 function render(result) {
   state.lastResult = result;
   $("#placeholder").hidden = true;
-  $("#trust").hidden = false;
   $("#tabs").hidden = false;
-  renderTrust(result);
   renderBrochure(result);
   renderInspect(result);
   $("#json").innerHTML = highlightJSON(result);
@@ -154,30 +152,6 @@ function render(result) {
 }
 
 function pct(x) { return Math.round((x ?? 0) * 100) + "%"; }
-
-function renderTrust(r) {
-  $("#t-conf").textContent = pct(r.confidence);
-  $("#t-faith").textContent = pct(r.faithfulness?.score);
-  $("#t-fit").textContent = `${r.constraints?.blocks_within_limits ?? 0} / ${r.constraints?.total_blocks ?? 0}`;
-
-  const flags = [];
-  flags.push(r.constraints_ok
-    ? `<span class="chip ok">constraints ✓</span>`
-    : `<span class="chip bad">constraints ✗</span>`);
-  const rep = r.constraints?.repaired_blocks || [];
-  if (rep.length) flags.push(`<span class="chip warn">repaired: ${rep.join(", ")}</span>`);
-  const trunc = r.constraints?.truncated_blocks || [];
-  if (trunc.length) flags.push(`<span class="chip bad">truncated: ${trunc.join(", ")}</span>`);
-  const uns = r.faithfulness?.unsupported_claims || [];
-  flags.push(uns.length
-    ? `<span class="chip bad">${uns.length} unsupported</span>`
-    : `<span class="chip ok">fully grounded</span>`);
-  $("#t-flags").innerHTML = flags.join("");
-
-  const m = r.meta || {};
-  $("#t-meta").innerHTML =
-    `${m.model_writer || "—"}<br>prompt ${m.prompt_version || "—"} · ${m.repair_iterations ?? 0} repair iters<br>req ${m.request_id || "—"}`;
-}
 
 function esc(s) { return (s || "").replace(/[&<>]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;" }[c])); }
 

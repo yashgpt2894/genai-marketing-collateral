@@ -165,24 +165,6 @@ select.field { appearance: none; cursor: pointer;
 /* ───────────── canvas ───────────── */
 .canvas { position: relative; overflow-y: auto; padding: 22px 26px 40px; display: flex; flex-direction: column; }
 
-.trust {
-  display: grid; grid-template-columns: repeat(3, auto) 1fr auto; gap: 26px; align-items: center;
-  padding: 16px 22px; border: 1px solid var(--line); border-radius: var(--r);
-  background: linear-gradient(180deg, var(--ink-2), rgba(20,26,33,.4)); margin-bottom: 16px;
-  animation: rise .5s both;
-}
-.metric { display: flex; flex-direction: column; gap: 2px; }
-.metric .big { font-family: var(--display); font-size: 30px; font-weight: 600; color: var(--teal-2); line-height: 1; }
-.metric .cap { font-family: var(--mono); font-size: 10px; letter-spacing: 1px; text-transform: uppercase; color: var(--faint); }
-.flags { display: flex; gap: 8px; flex-wrap: wrap; }
-.chip {
-  font-family: var(--mono); font-size: 11px; padding: 4px 9px; border-radius: 999px;
-  border: 1px solid var(--line-2); color: var(--muted); white-space: nowrap;
-}
-.chip.ok { color: var(--teal-2); border-color: rgba(15,181,166,.4); background: var(--teal-soft); }
-.chip.warn { color: var(--amber); border-color: rgba(224,162,62,.4); background: rgba(224,162,62,.1); }
-.chip.bad { color: var(--red); border-color: rgba(229,100,78,.4); background: rgba(229,100,78,.1); }
-.meta { text-align: right; font-family: var(--mono); font-size: 10.5px; color: var(--faint); line-height: 1.6; }
 
 .tabs { display: flex; align-items: center; gap: 6px; margin-bottom: 16px; animation: rise .5s .06s both; }
 .tab {
