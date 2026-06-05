@@ -74,7 +74,8 @@ async def add_request_id(request: Request, call_next):
     return response
 
 
-@app.get("/healthz")
+@app.get("/healthz")  # k8s-style container probe (Cloud Run's edge shadows /healthz for browsers)
+@app.get("/health")   # browser-reachable liveness, same payload
 def healthz():
     s = get_settings()
     return {

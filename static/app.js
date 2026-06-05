@@ -20,7 +20,7 @@ document.addEventListener("DOMContentLoaded", () => {
 async function checkHealth() {
   const dot = $("#health-dot"), text = $("#health-text"), models = $("#health-models");
   try {
-    const r = await fetch("/healthz");
+    const r = await fetch("/health");
     const h = await r.json();
     if (h.llm_configured) {
       dot.className = "dot ok"; text.textContent = "service ready";
@@ -29,7 +29,7 @@ async function checkHealth() {
     }
     if (h.models) models.textContent = `${h.models.writer} · ${h.models.parser}`;
   } catch {
-    dot.className = "dot err"; text.textContent = "backend unreachable — use Load example";
+    dot.className = "dot err"; text.textContent = "service unavailable";
   }
 }
 
