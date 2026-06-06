@@ -259,3 +259,51 @@ select.field { appearance: none; cursor: pointer;
   .shell { grid-template-columns: 1fr; height: auto; }
   .rail { border-right: none; border-bottom: 1px solid var(--line); }
 }
+
+/* ── executive_mono_v1 — monochrome 2-page brochure (light sheet on the dark canvas) ── */
+.brochure.exec{ background:#fff; padding:0 0 16mm; border-radius:2px; box-shadow:0 8px 34px rgba(0,0,0,.35);
+  --ex-ink:#14161B; --ex-slate:#565C68; --ex-mute:#8A909C; --ex-line:#DCDFE4;
+  font-family:"Spline Sans", -apple-system, "Segoe UI", Helvetica, Arial, sans-serif; color:var(--ex-ink); }
+.exec{ padding:16mm 16mm 0; }
+.exec h1, .exec h2, .exec .ex-nm, .exec .ex-n, .exec .ex-quote, .exec .ex-cta-t, .exec .ex-stand{
+  font-family:"Fraunces", Georgia, "Times New Roman", serif; }
+
+.ex-mast{ display:flex; justify-content:space-between; align-items:center; }
+.ex-kick{ font-family:"JetBrains Mono", monospace; font-size:10px; letter-spacing:.22em; text-transform:uppercase; color:var(--ex-mute); }
+.ex-wm{ display:flex; align-items:center; gap:8px; }
+.ex-mk{ width:20px; height:20px; background:var(--ex-ink); clip-path:polygon(0 0,100% 0,100% 100%); display:inline-block; }
+.ex-logo{ height:22px; width:auto; object-fit:contain; filter:grayscale(1); }
+.ex-nm{ font-weight:600; font-size:16px; }
+.ex-rule{ height:1px; background:var(--ex-line); margin:6mm 0 0; }
+
+.ex-photo{ position:relative; margin:0; overflow:hidden;
+  background:radial-gradient(120% 90% at 20% 12%, rgba(255,255,255,.16), transparent 55%), linear-gradient(135deg,#3a3f49,#20242b 48%,#11131a); }
+.ex-photo img{ display:block; width:100%; height:100%; object-fit:cover; filter:grayscale(1) contrast(1.02); }
+.ex-photo.empty img{ display:none; }
+.ex-tag{ position:absolute; left:10px; bottom:9px; font-family:"JetBrains Mono",monospace; font-size:8.5px;
+  letter-spacing:.14em; text-transform:uppercase; color:rgba(255,255,255,.66); z-index:2; }
+.ex-hero{ height:78mm; margin-top:7mm; }
+
+.ex-h1{ font-weight:600; font-size:34px; line-height:1.06; letter-spacing:-.01em; margin:8mm 0 0; }
+.ex-stand{ font-style:italic; font-size:15px; line-height:1.5; color:var(--ex-slate); margin:4mm 0 0; }
+.ex-stats{ display:grid; grid-template-columns:repeat(3,1fr); margin:8mm 0 0; border-top:1px solid var(--ex-ink); border-bottom:1px solid var(--ex-line); }
+.ex-stat{ padding:5mm 0; border-right:1px solid var(--ex-line); }
+.ex-stat:last-child{ border-right:0; }
+.ex-n{ font-weight:600; font-size:27px; line-height:1; }
+.ex-l{ font-family:"JetBrains Mono",monospace; font-size:9px; letter-spacing:.05em; text-transform:uppercase; color:var(--ex-mute); margin-top:6px; }
+.ex-lede, .ex-body{ font-size:11.5px; line-height:1.72; color:#23262E; text-align:justify; columns:2; column-gap:9mm; }
+.ex-lede{ margin:7mm 0 0; }
+.ex-break{ margin:9mm 0; }
+.ex-h2{ font-weight:600; font-size:23px; line-height:1.12; margin:0 0 5mm; }
+.ex-body{ margin:0; }
+.ex-grid{ display:grid; grid-template-columns:1fr 1fr; grid-auto-rows:42mm; gap:5mm; margin:7mm 0 0; }
+.ex-grid .wide{ grid-column:1 / -1; height:46mm; }
+.ex-quote{ font-style:italic; font-weight:500; font-size:19px; line-height:1.34; margin:8mm 0 0; padding-left:7mm; border-left:2px solid var(--ex-ink); }
+.ex-cta{ background:var(--ex-ink); color:#fff; margin:9mm -16mm 0; padding:9mm 16mm; }
+.ex-cta-t{ font-size:19px; font-weight:600; }
+
+@media print{
+  @page{ size:A4; margin:0; }
+  .ex-break{ break-after:page; margin:0; }
+  .brochure.exec{ box-shadow:none; }
+}

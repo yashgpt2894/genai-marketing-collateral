@@ -58,10 +58,33 @@ FEATURE_V1 = TemplateSpec(
     ),
 )
 
+# Monochrome executive palette — black / charcoal / slate / white (no accent colour).
+_MONO = ("14161B", "23262E", "565C68", "FFFFFF")
+
+EXECUTIVE_MONO_V1 = TemplateSpec(
+    id="executive_mono_v1",
+    name="Monochrome executive (2-page, photo-rich)",
+    palette=_MONO,
+    blocks=(
+        BlockSpec("headline", BlockType.HEADING, min_words=4, max_words=10, theme_color="14161B"),
+        BlockSpec("standfirst", BlockType.SUBHEADING, min_words=12, max_words=28),
+        BlockSpec("hero", BlockType.CAPTION, min_words=2, max_words=12, image_placeholder=True, image_role="photo"),
+        BlockSpec("intro", BlockType.BODY, min_words=55, max_words=95),
+        BlockSpec("section", BlockType.HEADING, min_words=3, max_words=9, theme_color="14161B"),
+        BlockSpec("body", BlockType.BODY, min_words=70, max_words=130),
+        BlockSpec("shot_a", BlockType.CAPTION, min_words=2, max_words=10, image_placeholder=True, image_role="photo"),
+        BlockSpec("shot_b", BlockType.CAPTION, min_words=2, max_words=10, image_placeholder=True, image_role="photo"),
+        BlockSpec("shot_c", BlockType.CAPTION, min_words=2, max_words=12, image_placeholder=True, image_role="photo"),
+        BlockSpec("quote", BlockType.CAPTION, min_words=8, max_words=24),  # pull-quote (no image)
+        BlockSpec("cta", BlockType.CTA, min_words=6, max_words=16, theme_color="14161B"),
+    ),
+)
+
 _REGISTRY: dict[str, TemplateSpec] = {
     ONE_PAGER_V1.id: ONE_PAGER_V1,
     TWO_COLUMN_V1.id: TWO_COLUMN_V1,
     FEATURE_V1.id: FEATURE_V1,
+    EXECUTIVE_MONO_V1.id: EXECUTIVE_MONO_V1,
 }
 
 # template definitions are versioned alongside prompts/models for reproducibility

@@ -52,3 +52,16 @@ def test_committed_golden_set_passes_offline():
     rep = run_eval(cases, live=False,
                    min_faithfulness=th["min_faithfulness"], min_pass_rate=th["min_pass_rate"])
     assert rep.ok, [(r.id, r.constraints_ok, r.faithfulness) for r in rep.results]
+
+
+def test_executive_mono_passes_with_fewer_photos_than_slots():
+    # executive_mono_v1 has 4 photo slots; each brief offers 1 photo -> only 2 fill,
+    # 2 stay empty. Empty image slots must NOT fail the hard contract (images are
+    # optional polish) — this is the real-PDF case that would otherwise show 'constraints ✗'.
+    rep = run_eval(
+        [EvalCase(id="exec_mono", template_id="executive_mono_v1", prompt="make the case",
+                  sender=_brief("sender", "send"), receiver=_brief("receiver", "recv"))],
+        live=False, min_faithfulness=0.9, min_pass_rate=1.0,
+    )
+    assert rep.ok, [(r.id, r.constraints_ok, r.within) for r in rep.results]
+    assert rep.results[0].constraints_ok   # green despite 2 empty photo slots

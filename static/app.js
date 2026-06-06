@@ -145,7 +145,8 @@ function render(result) {
   state.lastResult = result;
   $("#placeholder").hidden = true;
   $("#tabs").hidden = false;
-  renderBrochure(result);
+  if (result.template_id === "executive_mono_v1") renderExecutive(result);
+  else renderBrochure(result);
   renderInspect(result);
   $("#json").innerHTML = highlightJSON(result);
   switchTab("preview");
@@ -190,6 +191,59 @@ function renderBrochure(r) {
     }
   }
   wrap.innerHTML = html;
+}
+
+/* ───────────── executive (monochrome 2-page) render ───────────── */
+function exStat(s) {
+  const t = (s || "").trim();
+  const m = t.match(/^([+~]?[\d.,]+\s*(?:%|pts?|k|x|hrs?|wks?|m|bn|\+)?)\s+(.+)$/i);
+  const n = m ? m[1].trim() : (t.split(" ")[0] || "");
+  const l = m ? m[2] : t.split(" ").slice(1).join(" ");
+  return `<div class="ex-stat"><div class="ex-n">${esc(n)}</div><div class="ex-l">${esc(l)}</div></div>`;
+}
+
+async function renderExecutive(r) {
+  const wrap = $("#brochure");
+  wrap.className = "brochure exec";
+  const byId = Object.fromEntries((r.blocks || []).map((b) => [b.id, b]));
+  const pid = r.pair_id;
+  const asset = (ref) => `/assets/${encodeURIComponent(pid)}/${encodeURIComponent(ref)}`;
+
+  // the brief supplies masthead names + stats + logo; degrade gracefully if it's missing
+  let sender = null, receiver = null;
+  try {
+    const br = await fetch(`/companies/${encodeURIComponent(pid)}`).then((x) => x.json());
+    sender = br.sender; receiver = br.receiver;
+  } catch (e) { /* no brief — render without names/stats */ }
+  const senderName = (sender && sender.name) || "Collateral";
+  const receiverName = (receiver && receiver.name) || "the recipient";
+  const logoRef = sender && sender.logo_asset;
+  const stats = ((sender && sender.key_stats) || []).slice(0, 3);
+
+  const photo = (b, cls) => (b && b.image_ref)
+    ? `<figure class="ex-photo ${cls || ""}"><img src="${asset(b.image_ref)}" alt="" onerror="this.closest('.ex-photo').classList.add('empty')"/>${b.text ? `<figcaption class="ex-tag">${esc(b.text)}</figcaption>` : ""}</figure>`
+    : "";
+  const shots = ["shot_a", "shot_b", "shot_c"].map((id) => byId[id]).filter((b) => b && b.image_ref);
+
+  let h = `<article class="exec">`;
+  h += `<header class="ex-mast"><span class="ex-kick">Prepared for — ${esc(receiverName)}</span>` +
+    `<span class="ex-wm">${logoRef ? `<img class="ex-logo" src="${asset(logoRef)}" alt="" onerror="this.style.display='none'"/>` : `<span class="ex-mk"></span>`}<span class="ex-nm">${esc(senderName)}</span></span></header><div class="ex-rule"></div>`;
+  h += photo(byId.hero, "ex-hero");
+  if (byId.headline) h += `<h1 class="ex-h1">${esc(byId.headline.text)}</h1>`;
+  if (byId.standfirst) h += `<p class="ex-stand">${esc(byId.standfirst.text)}</p>`;
+  if (stats.length) h += `<div class="ex-stats">${stats.map(exStat).join("")}</div>`;
+  if (byId.intro) h += `<p class="ex-lede">${esc(byId.intro.text)}</p>`;
+  h += `<div class="ex-break"></div>`;
+  if (byId.section) h += `<h2 class="ex-h2">${esc(byId.section.text)}</h2>`;
+  if (byId.body) h += `<div class="ex-body">${esc(byId.body.text)}</div>`;
+  if (shots.length) {
+    const grid = shots.map((b, i) => photo(b, (shots.length % 2 === 1 && i === shots.length - 1) ? "wide" : "")).join("");
+    h += `<div class="ex-grid">${grid}</div>`;
+  }
+  if (byId.quote && byId.quote.text) h += `<blockquote class="ex-quote">${esc(byId.quote.text)}</blockquote>`;
+  if (byId.cta) h += `<div class="ex-cta"><span class="ex-cta-t">${esc(byId.cta.text)}</span></div>`;
+  h += `</article>`;
+  wrap.innerHTML = h;
 }
 
 function renderInspect(r) {
