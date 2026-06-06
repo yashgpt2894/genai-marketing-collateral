@@ -200,7 +200,7 @@ async def upload_documents(
         raise HTTPException(status_code=422, detail="no files uploaded")
 
     max_bytes = get_settings().max_upload_mb * 1024 * 1024
-    keys: list[str] = []
+    blobs: list[tuple[str, bytes]] = []
     for f in files:
         if not (f.filename or "").lower().endswith(".pdf"):
             raise HTTPException(status_code=422, detail=f"only PDFs accepted, got '{f.filename}'")
@@ -208,7 +208,13 @@ async def upload_documents(
         if len(data) > max_bytes:
             raise HTTPException(status_code=413, detail=(
                 f"'{f.filename}' exceeds the {get_settings().max_upload_mb}MB upload limit"))
-        keys.append(store.save_upload(tenant, pair_id, role, f.filename or "upload.pdf", data))
+        blobs.append((f.filename or "upload.pdf", data))
+
+    # Re-uploading a role fully REPLACES it: drop the prior PDF(s), extracted assets, and brief
+    # for this (pair, role) first, so nothing from an older document can survive into a new
+    # generation. (The other role is untouched; for a wholly new pairing use a fresh pair_id.)
+    store.clear_role(tenant, pair_id, role)
+    keys = [store.save_upload(tenant, pair_id, role, fn, data) for fn, data in blobs]
 
     job_id = uuid.uuid4().hex[:12]
     store.set_job(tenant, pair_id, job_id, "processing", f"parsing {len(keys)} file(s) for {role}", kind="parse")

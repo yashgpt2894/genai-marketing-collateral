@@ -103,6 +103,14 @@ class CloudStore:
         return [r for r in ("sender", "receiver")
                 if self._coll(tenant, pair_id, "briefs").document(r).get().exists]
 
+    def clear_role(self, tenant: str, pair_id: str, role: str) -> None:
+        r = _seg(role)
+        pref = self._prefix(tenant, pair_id)
+        for blob_prefix in (f"{pref}/uploads/{r}_", f"{pref}/assets/{r}"):
+            for b in self._bucket.list_blobs(prefix=blob_prefix):
+                b.delete()
+        self._coll(tenant, pair_id, "briefs").document(r).delete()
+
     # -- jobs ------------------------------------------------------------------
     def set_job(self, tenant: str, pair_id: str, job_id: str, status: str,
                 message: str = "", kind: str = "") -> None:

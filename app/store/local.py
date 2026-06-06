@@ -97,6 +97,21 @@ class LocalStore:
         d = self._pair_dir(tenant, pair_id)
         return [r for r in ("sender", "receiver") if (d / f"{r}.json").exists()]
 
+    def clear_role(self, tenant: str, pair_id: str, role: str) -> None:
+        d = self._pair_dir(tenant, pair_id)
+        r = _safe(role)
+        up = d / "uploads"
+        if up.exists():
+            for p in up.glob(f"{r}_*"):          # uploads keyed '{role}_{filename}'
+                p.unlink()
+        assets = d / "assets"
+        if assets.exists():
+            for p in assets.glob(f"{r}*"):       # asset ids start with the role, e.g. 'sender0_<hash>_img_...'
+                p.unlink()
+        brief = d / f"{r}.json"
+        if brief.exists():
+            brief.unlink()
+
     # -- jobs ------------------------------------------------------------------
     def set_job(self, tenant: str, pair_id: str, job_id: str, status: str,
                 message: str = "", kind: str = "") -> None:

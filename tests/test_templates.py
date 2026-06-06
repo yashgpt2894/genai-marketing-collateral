@@ -107,6 +107,25 @@ def test_localstore_delete_roundtrips(tmp_path):
     assert s.delete_asset("t1", "p1", "logo") is False                        # already gone
 
 
+def test_localstore_clear_role_wipes_only_that_role(tmp_path):
+    from app.store.local import LocalStore
+    from app.schemas import CompanyBrief, Fact
+    s = LocalStore(root=tmp_path)
+    for role, pfx in (("sender", "send"), ("receiver", "recv")):
+        s.save_upload("t", "p", role, "doc.pdf", b"%PDF-1.4 hi")
+        s.save_asset("t", "p", f"{role}0_h_img_1_0", "png", b"\x89PNG")
+        s.save_brief("t", "p", CompanyBrief(role=role, name=f"{role} co",
+                                            facts=[Fact(id=f"{pfx}.fact.1", text="x")]))
+    s.clear_role("t", "p", "sender")
+    assert s.load_brief("t", "p", "sender") is None                  # brief gone
+    assert s.load_asset("t", "p", "sender0_h_img_1_0") is None       # assets gone
+    assert s.list_uploads("t", "p", "sender") == []                  # uploads gone
+    # the other role is untouched
+    assert s.load_brief("t", "p", "receiver") is not None
+    assert s.load_asset("t", "p", "receiver0_h_img_1_0") is not None
+    assert s.list_uploads("t", "p", "receiver") != []
+
+
 def test_edit_and_delete_template_endpoints(tmp_path):
     client = _client(tmp_path)
     tpl = _good()
