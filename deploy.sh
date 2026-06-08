@@ -38,7 +38,7 @@ gcloud run deploy "$SERVICE" \
   --region "$REGION" \
   --allow-unauthenticated \
   --set-secrets "GEMINI_API_KEY=gemini-api-key:latest" \
-  --set-env-vars "MODEL_WRITER=gemini-3.5-flash,MODEL_PARSER=gemini-3.5-flash,MODEL_CHEAP=gemini-3.5-flash,GOOGLE_CLOUD_LOCATION=$REGION" \
+  --set-env-vars "MODEL_WRITER=gemini-2.5-flash,MODEL_PARSER=gemini-2.5-flash,MODEL_CHEAP=gemini-2.5-flash,GOOGLE_CLOUD_LOCATION=$REGION" \
   --memory 1Gi --cpu 1 --timeout 600 --max-instances 1
 
 URL="$(gcloud run services describe "$SERVICE" --region "$REGION" --format='value(status.url)')"

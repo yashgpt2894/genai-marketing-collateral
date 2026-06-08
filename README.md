@@ -71,10 +71,10 @@ curl "$URL/generate/demo1/<job_id>" -H "Authorization: Bearer $TOKEN"           
 
 ### Tests
 ```bash
-pip install '.[dev]' && pytest      # 54 tests, all offline (no network / no real model)
+pip install '.[dev]' && pytest      # 50 tests, all offline (no network / no real model)
 python -m app.eval.harness          # golden-set eval (offline; add --live for real Gemini quality)
 ```
-constraint engine · offline pipeline (injected fake LLM) · token/cost · async API (TestClient) · messaging · cache · metrics · **templates CRUD + jobs** · **image selection** · **eval harness**.
+constraint engine · offline pipeline (injected fake LLM) · token/cost · async API (TestClient) · messaging · cache · metrics · **assets + jobs** · **image selection** · **eval harness**.
 
 ---
 
@@ -174,7 +174,7 @@ Dockerfile · deploy.sh · ARCHITECTURE.md · DEPLOY.md · openapi.json · postm
 
 ## Status & honest limitations
 **Deployed and tested end-to-end on GCP** (auth → upload → async parse → generate → grounded `ArticleJSON`
-with cost). Full template CRUD, job history, and asset management are live. **Single-tenant** prototype,
+with cost). Job history and asset management are live. **Single-tenant** prototype,
 with the tenant plumbing already threaded for multi-tenant. Known follow-ups: tune the faithfulness judge,
 pin the model to an EU region (currently `global`), and wire Looker Studio over the **already-built**
 BigQuery metrics export. The deterministic core is tested (50 offline tests); generation quality depends

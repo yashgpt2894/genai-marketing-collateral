@@ -29,12 +29,12 @@ class _Resp:
 def test_usage_accumulates_per_model():
     c = GeminiClient()
     c.reset_usage()
-    c._record_usage("gemini-3.5-pro", _Resp(_UM(100, 50, 150)))
-    c._record_usage("gemini-3.5-pro", _Resp(_UM(20, 10, 30)))
-    c._record_usage("gemini-3.5-flash-lite", _Resp(_UM(40, 5, 45)))
+    c._record_usage("gemini-2.5-pro", _Resp(_UM(100, 50, 150)))
+    c._record_usage("gemini-2.5-pro", _Resp(_UM(20, 10, 30)))
+    c._record_usage("gemini-2.5-flash-lite", _Resp(_UM(40, 5, 45)))
     u = c.usage()
-    assert u["gemini-3.5-pro"] == {"input": 120, "output": 60, "total": 180, "calls": 2}
-    assert u["gemini-3.5-flash-lite"]["input"] == 40
+    assert u["gemini-2.5-pro"] == {"input": 120, "output": 60, "total": 180, "calls": 2}
+    assert u["gemini-2.5-flash-lite"]["input"] == 40
 
 
 def test_reset_clears():
@@ -53,15 +53,15 @@ def test_missing_usage_metadata_is_safe():
 
 
 def test_band():
-    assert band("gemini-3.5-pro") == "pro"
-    assert band("gemini-3.5-flash") == "flash"
-    assert band("gemini-3.5-flash-lite") == "flash-lite"
+    assert band("gemini-2.5-pro") == "pro"
+    assert band("gemini-2.5-flash") == "flash"
+    assert band("gemini-2.5-flash-lite") == "flash-lite"
 
 
 def test_cost_priced_per_model():
     usage = {
-        "gemini-3.5-pro": {"input": 1_000_000, "output": 1_000_000},        # 1.25 + 10.00
-        "gemini-3.5-flash-lite": {"input": 1_000_000, "output": 0},          # 0.10
+        "gemini-2.5-pro": {"input": 1_000_000, "output": 1_000_000},        # 1.25 + 10.00
+        "gemini-2.5-flash-lite": {"input": 1_000_000, "output": 0},          # 0.10
     }
     assert cost_usd(usage) == 11.35
 

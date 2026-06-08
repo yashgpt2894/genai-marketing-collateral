@@ -54,8 +54,9 @@ curl -X POST "$URL/generate" \
 ```
 
 ## Notes
-- **Model IDs:** defaults to `gemini-3.5-flash`. If that isn't enabled in your
-  project/region yet, set `MODEL_*` to one that is (e.g. `gemini-2.5-flash`).
+- **Model IDs:** the quick deploy defaults all three to the GA `gemini-2.5-flash`. If a
+  model id isn't enabled in your project/region yet, set `MODEL_*` to one that is
+  (e.g. `gemini-2.5-pro` for the writer).
 - **Persistence:** the prototype stores briefs/outputs on the instance's local disk,
   so the deploy pins `--max-instances 1` (upload + generate hit the same instance).
   Swapping `LocalStore` for GCS + Firestore removes that limit — that's the

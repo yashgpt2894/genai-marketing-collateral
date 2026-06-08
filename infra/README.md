@@ -57,7 +57,7 @@ terraform destroy
 ```
 
 ## Notes
-- The model ids default to `gemini-3.5-pro` / `gemini-3.5-flash`; override with
+- The model ids default to `gemini-2.5-pro` / `gemini-2.5-flash`; override with
   `-var model_writer=` / `-var model_flash=` if those aren't enabled in your project/region.
 - Firestore allows one `(default)` database per project; if you already have one,
   remove `google_firestore_database.db` from the plan.
