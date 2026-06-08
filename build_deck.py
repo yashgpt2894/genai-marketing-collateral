@@ -258,7 +258,7 @@ eyebrow(s, "SECURITY & SCALE", 0.85, 0.55, TEAL)
 title(s, "Secure by default, scales on its own", 0.82, 0.95, 11.6, WHITE)
 box(s, 0.85, 2.3, 5.55, 3.4, fill=INK2, line="2C3647")
 _txt(s, "SECURITY", 1.15, 2.55, 5, 0.4, size=12, color=TEAL, bold=True, font=MONO)
-_txt(s, "•  Google ID-token auth + Cloud Run IAM (defense in depth)\n•  PDFs are untrusted input — used as grounding data, not instructions\n•  CMEK-encrypted storage · EU region (europe-west1) · least-privilege IAM\n•  no tools / side-effects → tiny blast radius",
+_txt(s, "•  Google ID-token auth + Cloud Run IAM (defense in depth)\n•  Untrusted PDFs → injection hard gate (refuse, fail closed) + data-not-instructions channel\n•  CMEK-encrypted storage · EU region (europe-west1) · least-privilege IAM\n•  no tools / side-effects → tiny blast radius",
      1.15, 3.15, 5.0, 2.3, size=13.5, color=ICE, spacing=1.35)
 box(s, 6.95, 2.3, 5.55, 3.4, fill=INK2, line="2C3647")
 _txt(s, "SCALE", 7.25, 2.55, 5, 0.4, size=12, color=TEAL, bold=True, font=MONO)
@@ -325,7 +325,7 @@ cards = [
      "the BigQuery export is built — only the Looker wiring is left"),
     ("Go agentic → Agent Engine", "tools (live research, image sourcing) or a HITL pause",
      "agents add cost + opacity — not until there are real tools to call"),
-    ("Harden", "tune the faithfulness judge · golden eval set in CI",
+    ("Harden", "Model Armor injection filter · tune the judge · golden eval set in CI",
      "model calls use the global endpoint today — EU residency is the open gap"),
 ]
 xs = [0.85, 6.75]; ys = [2.35, 4.5]; w = 5.7; h = 2.0

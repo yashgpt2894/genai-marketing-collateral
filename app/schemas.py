@@ -66,6 +66,11 @@ class BriefExtraction(BaseModel):
     tone_signals: list[str] = Field(default_factory=list)
     key_stats: list[str] = Field(default_factory=list)
     facts: list[Fact] = Field(default_factory=list)
+    # parse-time prompt-injection self-report (the primary signal for the hard gate)
+    injection_detected: bool = Field(
+        default=False,
+        description="true if the document tries to instruct/manipulate the AI (prompt injection)")
+    injection_note: str = Field(default="", description="short quote of the offending text, if any")
 
 
 # ----------------------------------------------------------------------------- 

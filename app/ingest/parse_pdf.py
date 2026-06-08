@@ -6,9 +6,10 @@ PDF parsing — the hybrid the deck describes, now storage-agnostic.
   * Meaning              -> Gemini multimodal reads tables/charts/text into a typed
     brief (see brief_builder.py).
 
-Document text is *untrusted input*. `sanitize_text` does a light guard pass that
-flags / neutralises the most common prompt-injection phrasings before any text is
-shown to the model. (The stronger defence is structural — see generate/context.py.)
+Document text is *untrusted input*. `detect_injection` is a fast, blunt tripwire that
+flags the most common prompt-injection phrasings — the *secondary* signal behind the
+parse-time hard gate (the primary, context-aware detector is the model's own
+`injection_detected` flag). The structural defence lives in generate/context.py.
 """
 from __future__ import annotations
 
@@ -28,15 +29,11 @@ _INJECTION_PATTERNS = [
 ]
 
 
-def sanitize_text(text: str) -> tuple[str, list[str]]:
-    """Neutralise obvious injection lines. Returns (clean_text, flags_found)."""
-    flags: list[str] = []
-    clean = text
-    for pat in _INJECTION_PATTERNS:
-        if pat.search(clean):
-            flags.append(pat.pattern)
-            clean = pat.sub("[removed-instruction]", clean)
-    return clean, flags
+def detect_injection(text: str) -> list[str]:
+    """Fast, blunt prompt-injection tripwire: return the patterns matched in `text`
+    ([] if clean). Secondary signal behind the parse-time hard gate — the primary,
+    context-aware detector is the model's own `injection_detected` flag."""
+    return [pat.pattern for pat in _INJECTION_PATTERNS if pat.search(text)]
 
 
 @dataclass

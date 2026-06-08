@@ -81,9 +81,12 @@ Storage is already tenant-keyed, so it's an auth-claim change, not a refactor.
 Mapped to ML6's **Safe & Secure / Responsible AI** pillars — implemented vs the production-hardening posture.
 
 **Implemented**
-- **Prompt-injection defense** (untrusted PDFs). Document text is a separate **DATA channel**, never
-  concatenated into the instruction block; the system prompt forbids obeying instructions inside it
-  (`INJECTION_GUARD`); the writer sees only **distilled facts**, not raw PDF text.
+- **Prompt-injection defense** (untrusted PDFs), two layers. **(1) A parse-time hard gate that fails
+  closed:** the parser self-reports injection (`injection_detected`, judged over the whole PDF) plus a
+  regex tripwire on the text; on either signal the upload is **refused** (job → error) and **no brief or
+  asset is persisted**. **(2) Structural:** document text is a separate **DATA channel**, never concatenated
+  into the instruction block; the system prompt forbids obeying instructions inside it; the writer sees
+  only **distilled facts**, not raw PDF text.
 - **Grounded, cited, no fabrication.** The writer uses only source-tagged brief facts, tags each block
   with the fact-ids it used, and **abstains** rather than inventing; a claim-level faithfulness check
   flags unsupported/dangling citations. **Logos/images are extracted bytes** (PyMuPDF), never generated —

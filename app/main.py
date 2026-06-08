@@ -49,7 +49,7 @@ from app.cache import brief_fingerprint, gen_cache_key, get_cache, load_cached
 from app.config import get_settings
 from app.generate.pipeline import run_generation
 from app.metrics import emit_generation_metric
-from app.ingest.brief_builder import build_brief
+from app.ingest.brief_builder import build_brief, InjectionRejected
 from app.llm.gemini import GeminiClient, LLMError, LLMNotConfigured
 from app.schemas import BriefsResponse, GenerateRequest, UploadResponse
 from app.store import get_store
@@ -111,6 +111,9 @@ def _parse_job(tenant: str, pair_id: str, job_id: str, role: str, keys: list[str
         store.set_job(tenant, pair_id, job_id, "done", f"{role} brief ready ({len(brief.facts)} facts)")
         log.info("parsed %s for tenant=%s pair=%s (%d facts)", role, tenant, pair_id, len(brief.facts))
     except LLMNotConfigured as e:
+        store.set_job(tenant, pair_id, job_id, "error", str(e))
+    except InjectionRejected as e:
+        log.warning("parse REJECTED (prompt injection) tenant=%s pair=%s role=%s", tenant, pair_id, role)
         store.set_job(tenant, pair_id, job_id, "error", str(e))
     except Exception as e:
         log.exception("parse failed")

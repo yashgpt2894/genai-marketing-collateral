@@ -99,16 +99,19 @@ constraint engine · offline pipeline (injected fake LLM) · token/cost · async
   the graceful fallback).
 - **Confidence + cost are computed, not self-reported.** `confidence` blends constraint compliance and
   faithfulness; every output carries token counts and **per-model USD cost**.
-- **Prompt-injection posture.** PDFs are untrusted input: document text is a **separate DATA channel**, the
-  system prompt forbids obeying instructions inside it, the writer sees only distilled facts, and a sanitise
-  pass runs. `Model Armor` on Vertex sits in front in production.
+- **Prompt-injection defense.** PDFs are untrusted input. A **parse-time hard gate fails closed**: the
+  parser self-reports injection over the whole PDF (+ a regex backup) and a flagged upload is **refused**
+  with nothing persisted. Structurally, document text is a **separate DATA channel**, the system prompt
+  forbids obeying instructions inside it, and the writer sees only distilled facts. `Model Armor` on Vertex
+  is the managed version in production.
 
 ---
 
 ## Security & responsible AI
 
 Mapped to ML6's **Safe & Secure / Responsible AI** pillars. **Implemented:** prompt-injection defense
-(untrusted PDF text as a separate **DATA channel** + an `INJECTION_GUARD`, distilled-facts-only) ·
+(a **parse-time hard gate** — model self-flag + regex → refuse the upload, fail closed — plus a separate
+**DATA channel** and distilled-facts-only) ·
 **grounded/cited with abstention** and **no fabricated logos** (images are *extracted*, never generated) ·
 graceful repair-loop failure · **least-privilege IAM + no secrets** (Vertex via ADC) · **CMEK** + EU-region
 storage + retention (365-day lifecycle + `DELETE` endpoints) · versioned, cost-stamped outputs.
