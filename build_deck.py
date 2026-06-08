@@ -61,6 +61,10 @@ def footer(s, n, dark=False):
     _txt(s, str(n), 12.4, 7.08, 0.5, 0.3, size=9, color=(MUTE if not dark else "5A6B82"),
          font=MONO, align=PP_ALIGN.RIGHT)
 
+def notes(s, text):
+    """Attach speaker notes (the hard-to-remember facts) to a slide."""
+    s.notes_slide.notes_text_frame.text = text
+
 def box(s, x, y, w, h, *, fill=WHITE, line=LINE, text="", tcolor=INK, size=12, bold=True,
         sub="", scolor=MUTE, font=BODY):
     shp = s.shapes.add_shape(MSO_SHAPE.ROUNDED_RECTANGLE, In(x), In(y), In(w), In(h))
@@ -105,6 +109,7 @@ _txt(s, "Company PDFs → on-brand, factually-grounded B2B articles, as structur
 _txt(s, "A deterministic, grounded LLM pipeline — deployed end-to-end on Google Cloud.",
      0.85, 4.85, 11, 0.4, size=13, color="7E8CA0", font=MONO)
 footer(s, 1, dark=True)
+notes(s, "⏱ 0:30 · by 0:30\n\nOpen with — 'Before I design anything, can I confirm the goal, the data, the latency class, the budget, and any privacy rules?' Then walk the 5 steps; lead with the simplest thing that works.")
 
 # ── 2 · the problem ───────────────────────────────────────────────────────────
 s = sld(WHITE)
@@ -119,6 +124,7 @@ for i, (t, sub) in enumerate(steps):
 _txt(s, "Slow, repetitive, at volume — hours of editor time per brochure.\nAutomating research → layout turns that into seconds of compute at consistent, on-brand quality.",
      0.85, 4.5, 11.6, 1.0, size=15, color=SLATE, spacing=1.15)
 footer(s, 2)
+notes(s, "⏱ 1:30 · by 2:00\n\nProblem & business value — frame in the client's unit: editor time + cost per brochure, and the risk of a factual error in a B2B pitch.")
 
 # ── 3 · solution = two endpoints + flow ───────────────────────────────────────
 s = sld(WHITE)
@@ -150,6 +156,7 @@ chip(s, 0.85, 5.45, 3.0, "auth: Bearer ID token")
 chip(s, 4.0, 5.45, 3.4, "structured JSON, schema-valid")
 chip(s, 7.55, 5.45, 3.5, "every word limit enforced in code")
 footer(s, 3)
+notes(s, "⏱ 1:15 · by 3:15\n\nEndpoints (the brief): POST /companies/{pair}/documents → upload, async parse, brief · POST /generate {pair_id, prompt, template_id} → 200 ArticleJSON (synchronous). ?async=true → 202 + job_id, then poll GET /generate/{pair}/{job}. Internal pipeline: parse → ground → draft → map → validate & repair → ArticleJSON.")
 
 # ── 4 · orchestration (the explicit requirement) ──────────────────────────────
 s = sld(INK); bar(s)
@@ -170,6 +177,7 @@ for i, (hd, items) in enumerate(stages):
 _txt(s, "A fixed DAG — deterministic, typed, traceable. Not an open-ended agent.",
      0.85, 5.6, 11, 0.4, size=14, color="7E8CA0", font=MONO)
 footer(s, 4, dark=True)
+notes(s, "⏱ 1:15 · by 4:30\n\nModels: gemini-2.5-pro = writer · gemini-2.5-flash = parse + verify + repair (cheap). 3.x not enabled in this project yet → model is a swappable env var (MODEL_WRITER / MODEL_PARSER). Schema-valid JSON = Gemini controlled generation + Pydantic response_schema (decode-time). Grounding = long-context (no vector DB for 2 companies); RAG swap = Vertex AI RAG Engine.")
 
 # ── 5 · cloud architecture ────────────────────────────────────────────────────
 s = sld(INK); bar(s)
@@ -216,6 +224,7 @@ _txt(s, "SECURITY SPINE", 1.0, 5.92, 3, 0.3, size=10, color=AMBER, bold=True, fo
 _txt(s, "Google ID-token auth + IAM   ·   CMEK   ·   EU-region storage   ·   Pub/Sub DLQ   ·   Terraform (infra/)",
      1.0, 6.26, 11.45, 0.5, size=11, color="9FB0C8", font=MONO, spacing=1.12)
 footer(s, 5, dark=True)
+notes(s, "⏱ 2:30 · by 7:00\n\nGCP stack — Cloud Run (serverless, scale-to-zero, europe-west1) · Vertex AI / Gemini (NO API key: service-account ADC; GOOGLE_GENAI_USE_VERTEXAI=true, GOOGLE_CLOUD_LOCATION=global) · GCS (PDFs + assets, CMEK key collateral-bucket-key) · Firestore (Native mode, europe-west1: briefs/jobs/outputs) · Pub/Sub + DLQ (async parse worker) · Artifact Registry + Cloud Build (CD: push→build→deploy). Least-privilege Cloud Run SA = ONLY roles/datastore.user + roles/aiplatform.user + bucket storage.objectAdmin + roles/pubsub.publisher. At-scale managed PDF-parse swap = Document AI.\n\nAWS equivalents: Cloud Run→App Runner / ECS-Fargate / Lambda · GCS→S3 · Firestore→DynamoDB · Pub/Sub+DLQ→SNS+SQS (or EventBridge) · Vertex/Gemini→Bedrock (Claude) · Document AI→Textract · CMEK→KMS · Cloud Build→CodePipeline/CodeBuild · Artifact Registry→ECR · Memorystore→ElastiCache · BigQuery→Athena/Redshift · Looker→QuickSight · Secret Manager→Secrets Manager · Identity Platform→Cognito · Model Armor→Bedrock Guardrails · IAM→IAM.\n\n100% prod-ready for a big org — gaps to own: (1) Multi-tenancy ENFORCED — tenant from the verified token claim + per-tenant CMEK + quotas/budgets (today single-tenant, header-trusted). (2) Network — VPC-SC perimeter, internal-only ingress (IAP / private LB), no public URL. (3) PII — Cloud DLP inspect/redact on ingestion + GDPR right-to-erasure purge. (4) Safety — Model Armor on the model calls. (5) Scale — drop --max-instances 1, run on Firestore+GCS (already supported), tune autoscaling, manage Vertex quota / provisioned throughput. (6) Observability/SLOs — Cloud Trace + Cloud Monitoring alerts + Error Reporting; wire Looker (BigQuery export already built). (7) Cost — per-tenant rate limits + Cloud Billing budget alerts + token caps. (8) CI/CD — tests GATE the pipeline + staging env + canary/blue-green + image scanning + Binary Authorization. (9) DR/backups — Firestore export, GCS object versioning, multi-region failover. (10) Auth — real IdP/SSO (Identity Platform / Okta) + per-tenant RBAC + Cloud Audit Logs. (11) Compliance — SOC2 / ISO / GDPR + a DPA (Vertex enterprise terms: prompts don't train Google's models).\nAlready in place: CMEK · EU storage · least-priv IAM · Pub/Sub DLQ · Terraform IaC · 51 CI tests · eval harness · 365-day retention.")
 
 # ── 6 · factual correctness ───────────────────────────────────────────────────
 s = sld(WHITE)
@@ -231,6 +240,7 @@ for i, (t, sub) in enumerate(fc):
 _txt(s, "Grounding reduces hallucination — it doesn't eliminate it. So citations stay, and a human approves before anything is mailed.",
      0.85, 4.55, 11.6, 0.6, size=15, color=SLATE, spacing=1.15)
 footer(s, 6)
+notes(s, "⏱ 1:15 · by 8:15\n\nFaithfulness = claim-level check: every factual block cites a brief fact-id (e.g. recv.fact.3); a dangling/unsupported cite lowers the score. Writer uses ONLY brief facts and ABSTAINS rather than invent. Citations = internal fact-ids, not footnotes. Grounding reduces but does NOT eliminate hallucination → citations + human review before publish (HITL).")
 
 # ── 7 · layout limits ─────────────────────────────────────────────────────────
 s = sld(WHITE)
@@ -251,6 +261,7 @@ arrow(s, 10.25, 3.15, 10.45, 3.15, color=TEAL)
 _txt(s, "Word/char limits, image placeholders and theme colours are ground-truth checks in a framework-free engine — fixed by a targeted loop, with graceful truncation as the floor.",
      0.85, 5.7, 11.6, 0.7, size=14, color=SLATE, spacing=1.15)
 footer(s, 7)
+notes(s, "⏱ 1:15 · by 9:30\n\nWord limits enforced IN CODE, not by the model (LLMs cannot count tokens). Repair loop is CAPPED (K tries) → graceful fallback = sentence-boundary truncation, flagged in constraints.truncated_blocks (never a hard error). Template = typed Pydantic contract (blocks: id, type, min/max words, image slot + role, theme color in palette). Schema validity guaranteed by controlled generation.")
 
 # ── 8 · security & scale ──────────────────────────────────────────────────────
 s = sld(INK); bar(s)
@@ -265,6 +276,7 @@ _txt(s, "SCALE", 7.25, 2.55, 5, 0.4, size=12, color=TEAL, bold=True, font=MONO)
 _txt(s, "•  Cloud Run autoscales 0 → N on concurrency\n•  Pub/Sub absorbs upload bursts (queue + DLQ)\n•  long/bursty jobs → ?async=true (off-path)\n•  stateless → any instance serves any request\n•  ceiling = Vertex quota, not compute",
      7.25, 3.15, 5.0, 2.3, size=13.5, color=ICE, spacing=1.35)
 footer(s, 8, dark=True)
+notes(s, "⏱ 1:30 · by 11:00\n\nAuth = TWO layers (defense in depth): authN = Google ID-token (HTTPBearer, verified per request, AUTH_MODE=google); authZ = Cloud Run IAM run.invoker. Injection = parse-time HARD gate, fail closed: Gemini self-flag (primary, reads whole PDF) + regex backup → reject + persist nothing. PDF = DATA channel, not instructions. Managed prod version = Model Armor. Storage = EU (europe-west1) + CMEK; model calls use the GLOBAL Vertex endpoint → EU model-residency is the open gap. Cloud Run scales 0→N on concurrency; parse runs off the request path (Pub/Sub + DLQ).")
 
 # ── 9 · live demo (terminal) ──────────────────────────────────────────────────
 s = sld(INK); bar(s)
@@ -287,6 +299,7 @@ for t, sub in metrics:
 _txt(s, "Output, grounded in the PDFs:\n“Turn Vanguard's idle time into delivery time.”",
      0.85, 5.2, 7.1, 0.9, size=13.5, color=ICE, spacing=1.15)
 footer(s, 9, dark=True)
+notes(s, "⏱ 1:45 · by 12:45\n\nCost ≈ $0.012 per article (measured: token count + USD stamped on every output). 51 offline tests (no network, no real model). Demo flow: curl upload sender + receiver PDFs → GET /companies/{pair} (poll until both briefs ready) → POST /generate → 200 ArticleJSON. Writer = 2.5 Pro, parse/verify = 2.5 Flash.")
 
 # ── 10 · why these choices ─────────────────────────────────────────────────────
 s = sld(WHITE)
@@ -313,6 +326,7 @@ for t, why in decisions:
     _txt(s, why, 1.15, y + 0.46, 11.0, 0.3, size=11.5, color=SLATE)
     y += h + gap
 footer(s, 10)
+notes(s, "⏱ 0:45 · by 13:30\n\nDeterministic typed DAG, NOT an agent (fixed flow, no dynamic looping). Long-context, NOT RAG (2-company corpus fits ~1M tokens; vector DB is overkill). Managed Gemini, NOT self-host/fine-tune (ship fast, ~$0.01/unit, no GPUs). Limits + image choice in CODE, not the model. Cloud Run, NOT GKE / Agent Engine (right-sized; scale-to-zero). Agentic scale-up path = Google ADK + Vertex AI Agent Engine.")
 
 # ── 11 · roadmap + trade-offs ──────────────────────────────────────────────────
 s = sld(WHITE)
@@ -336,6 +350,7 @@ for i, (t, d, trade) in enumerate(cards):
     _txt(s, d, x + 0.3, y + 0.64, w - 0.6, 0.7, size=12.5, color=SLATE, spacing=1.12)
     _txt(s, "trade-off:  " + trade, x + 0.3, y + 1.42, w - 0.6, 0.5, size=11, color=AMBER, spacing=1.1)
 footer(s, 11)
+notes(s, "⏱ 0:45 · by 14:15\n\nMulti-tenant: derive tenant from the verified TOKEN CLAIM (today it is the X-Tenant-ID header, default 'default') + per-tenant CMEK + rate/cost budgets — a config + auth-claim change, NOT a refactor (storage already keyed tenant-first). Org dashboard: BigQuery export is built → only Looker wiring left. Go agentic → Vertex AI Agent Engine (ADK). Harden: Model Armor (injection) · EU model residency · VPC-SC · Secret Manager · Cloud DLP (PII scrub on ingestion).")
 
 import os
 out = os.path.join(os.path.dirname(os.path.abspath(__file__)), "Case2_GenAI_Collateral.pptx")
