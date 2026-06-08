@@ -22,15 +22,13 @@ parse → ground → draft (cited) → map to template → validate & repair →
 | Method & path | Auth | What it does |
 |---|---|---|
 | `POST /companies/{pair_id}/documents` | Bearer | Upload sender/receiver PDFs. Parsed **async** (Pub/Sub → worker: Gemini multimodal for meaning + PyMuPDF for image/logo assets) into a typed, source-tagged `CompanyBrief`. Returns a `job_id`. |
-| `POST /generate` | Bearer | `{pair_id, prompt, template_id}` → **`202` + `job_id`** (never blocks the request). Poll `GET /generate/{pair_id}/{job_id}` → `ArticleJSON` (+ citations, confidence, **token/cost**). An `Idempotency-Key` header makes retries return the same job. |
+| `POST /generate` | Bearer | `{pair_id, prompt, template_id}` → **`ArticleJSON`** (synchronous — returns the structured article directly, with citations, confidence, **token/cost**). `?async=true` instead returns **`202` + `job_id`** to poll at `GET /generate/{pair_id}/{job_id}`, for long/bursty jobs. An `Idempotency-Key` header makes retries reuse the same result. |
 
-Supporting: `GET /templates` · **`POST` / `PUT` / `DELETE /templates`** (create / edit / delete a custom,
-validated template — tenant-scoped, built-ins read-only, usable as `template_id` and shown in the UI dropdown) ·
-`/companies/{pair_id}` · **`GET /jobs/{pair_id}`** (list jobs, `?type`/`?status`) + `/jobs/{pair_id}/{job_id}` ·
+Supporting: `GET /companies/{pair_id}` (the stored briefs) · **`GET /jobs/{pair_id}`** (list jobs, `?type`/`?status`) + `/jobs/{pair_id}/{job_id}` ·
 `GET`+`DELETE /assets/{pair_id}/{id}` · `/health` · the UI at `/` · and `/internal/parse` (the Pub/Sub push worker). Machine-readable spec:
 **`/openapi.json`** (Swagger at `/docs`) — the `HTTPBearer` scheme is attached to every protected route.
 A committed snapshot is in **`openapi.json`**, and a ready-to-import **`postman_collection.json`**
-(base URL preset; a test script auto-captures `job_id` for the poll) sits at the repo root.
+(base URL preset; Generate returns the article directly, plus an optional async-poll request) sits at the repo root.
 
 ## Auth (from a terminal)
 With `AUTH_MODE=google`, every data route needs a **Google ID token**. The deployed service is also
@@ -38,7 +36,7 @@ Cloud Run IAM-private, so one token satisfies both layers:
 ```bash
 URL=https://<your-service>.run.app
 TOKEN=$(gcloud auth print-identity-token --audiences="$URL")          # or impersonate an invoker SA
-curl -H "Authorization: Bearer $TOKEN" "$URL/templates"               # any data route; one token clears both layers
+curl -H "Authorization: Bearer $TOKEN" "$URL/companies/demo1"         # any data route; one token clears both layers
 ```
 Locally (`AUTH_MODE=none`, the default) no token is required. See [DEPLOY.md](DEPLOY.md) for the full flow.
 
@@ -64,6 +62,9 @@ curl -X POST "$URL/companies/demo1/documents" -F role=sender   -F files=@sample_
 curl -X POST "$URL/companies/demo1/documents" -F role=receiver -F files=@sample_data/receiver_vanguard_freight.pdf -H "Authorization: Bearer $TOKEN"
 # wait for both briefs (GET /companies/demo1), then:
 curl -X POST "$URL/generate" -H "Authorization: Bearer $TOKEN" -H 'Content-Type: application/json' \
+     -d '{"pair_id":"demo1","prompt":"Show how Nimbus cuts Vanguard idle fleet hours"}'   # → 200 ArticleJSON (synchronous)
+# optional — for long/bursty jobs, run it async and poll instead:
+curl -X POST "$URL/generate?async=true" -H "Authorization: Bearer $TOKEN" -H 'Content-Type: application/json' \
      -d '{"pair_id":"demo1","prompt":"Show how Nimbus cuts Vanguard idle fleet hours"}'   # → 202 {job_id}
 curl "$URL/generate/demo1/<job_id>" -H "Authorization: Bearer $TOKEN"                      # → {status, result}
 ```

@@ -134,7 +134,7 @@ for i, (t, sub) in enumerate(up):
     if i < 3: arrow(s, x + w + 0.02, 2.95, x + w + gap - 0.02, 2.95, color=SLATE, width=1.4)
     x += w + gap
 # generate row
-_txt(s, "POST /generate  →  202 + job_id  (poll)", 0.85, 3.95, 7, 0.3, size=11, color=TEAL, bold=True, font=MONO)
+_txt(s, "POST /generate  →  200  ArticleJSON (sync)", 0.85, 3.95, 7, 0.3, size=11, color=TEAL, bold=True, font=MONO)
 gen = [("Assemble", "grounded context"), ("Draft", "cited, Gemini Pro"),
        ("Map + validate", "limits in code"), ("ArticleJSON", "+ cost, confidence")]
 x = 0.85
@@ -185,8 +185,32 @@ box(s, 4.0, 4.7, 2.5, 0.85, fill=INK2, line="2C3647", text="Firestore", sub="bri
 box(s, 6.7, 4.7, 2.5, 0.85, fill=INK2, line="2C3647", text="Cloud Storage", sub="PDFs · assets · CMEK", size=12, tcolor=WHITE, scolor=ICE)
 arrow(s, 6.0, 4.25, 5.3, 4.68, color=SLATE, width=1.4)
 arrow(s, 7.2, 4.25, 7.9, 4.68, color=SLATE, width=1.4)
-_txt(s, "Cross-cutting:  Google ID-token auth + IAM   ·   Model Armor   ·   per-tenant CMEK   ·   EU residency   ·   Pub/Sub DLQ   ·   Terraform (infra/)",
-     0.85, 5.95, 11.6, 0.6, size=12, color="7E8CA0", font=MONO, spacing=1.2)
+# ── callout: visually highlight the core architectural decision (the API box) ──
+cb = s.shapes.add_shape(MSO_SHAPE.ROUNDED_RECTANGLE, In(0.85), In(3.55), In(2.95), In(1.7))
+cb.fill.solid(); cb.fill.fore_color.rgb = rgb(INK2)
+cb.line.color.rgb = rgb(AMBER); cb.line.width = Pt(2); cb.shadow.inherit = False
+_txt(s, "WHY CLOUD RUN", 1.08, 3.72, 2.6, 0.3, size=11, color=AMBER, bold=True, font=MONO, caps=True)
+_txt(s, "Deterministic + tool-less → one stateless service. No agent runtime, no servers — scale-to-zero, tiny blast radius.",
+     1.08, 4.08, 2.55, 1.1, size=11.5, color=ICE, spacing=1.16)
+arrow(s, 2.45, 3.55, 4.05, 2.82, color=AMBER, width=2)
+# callout: Vertex — no API key
+vb = s.shapes.add_shape(MSO_SHAPE.ROUNDED_RECTANGLE, In(9.6), In(3.12), In(2.9), In(0.74))
+vb.fill.solid(); vb.fill.fore_color.rgb = rgb(INK2); vb.line.color.rgb = rgb(AMBER); vb.line.width = Pt(1.5); vb.shadow.inherit = False
+_txt(s, "NO API KEY", 9.82, 3.22, 2.6, 0.28, size=10, color=AMBER, bold=True, font=MONO, caps=True)
+_txt(s, "Vertex via the Cloud Run service account (ADC)", 9.82, 3.5, 2.5, 0.32, size=10, color=ICE, spacing=1.05)
+# callout: async path
+ab = s.shapes.add_shape(MSO_SHAPE.ROUNDED_RECTANGLE, In(9.6), In(3.98), In(2.9), In(1.05))
+ab.fill.solid(); ab.fill.fore_color.rgb = rgb(INK2); ab.line.color.rgb = rgb(AMBER); ab.line.width = Pt(1.5); ab.shadow.inherit = False
+_txt(s, "ASYNC PARSE", 9.82, 4.08, 2.6, 0.28, size=10, color=AMBER, bold=True, font=MONO, caps=True)
+_txt(s, "Pub/Sub queues parse/upload bursts (+ DLQ), off the request path.",
+     9.82, 4.38, 2.55, 0.6, size=10, color=ICE, spacing=1.12)
+arrow(s, 9.58, 4.35, 9.22, 3.92, color=AMBER, width=1.5)
+# highlight: the security / governance spine
+sp = s.shapes.add_shape(MSO_SHAPE.ROUNDED_RECTANGLE, In(0.78), In(5.82), In(11.75), In(0.86))
+sp.fill.background(); sp.line.color.rgb = rgb(AMBER); sp.line.width = Pt(1.25); sp.shadow.inherit = False
+_txt(s, "SECURITY SPINE", 1.0, 5.92, 3, 0.3, size=10, color=AMBER, bold=True, font=MONO, caps=True)
+_txt(s, "Google ID-token auth + IAM   ·   Model Armor   ·   per-tenant CMEK   ·   EU residency   ·   Pub/Sub DLQ   ·   Terraform (infra/)",
+     1.0, 6.26, 11.45, 0.5, size=11, color="9FB0C8", font=MONO, spacing=1.12)
 footer(s, 5, dark=True)
 
 # ── 6 · factual correctness ───────────────────────────────────────────────────
@@ -235,7 +259,7 @@ _txt(s, "•  Google ID-token auth + Cloud Run IAM (defense in depth)\n•  PDFs
      1.15, 3.15, 5.0, 2.3, size=13.5, color=ICE, spacing=1.35)
 box(s, 6.95, 2.3, 5.55, 3.4, fill=INK2, line="2C3647")
 _txt(s, "SCALE", 7.25, 2.55, 5, 0.4, size=12, color=TEAL, bold=True, font=MONO)
-_txt(s, "•  Cloud Run autoscales 0 → N on concurrency\n•  Pub/Sub absorbs upload bursts (queue + DLQ)\n•  /generate returns 202 — never blocks\n•  stateless → any instance serves any request\n•  ceiling = Vertex quota, not compute",
+_txt(s, "•  Cloud Run autoscales 0 → N on concurrency\n•  Pub/Sub absorbs upload bursts (queue + DLQ)\n•  long/bursty jobs → ?async=true (off-path)\n•  stateless → any instance serves any request\n•  ceiling = Vertex quota, not compute",
      7.25, 3.15, 5.0, 2.3, size=13.5, color=ICE, spacing=1.35)
 footer(s, 8, dark=True)
 
@@ -247,8 +271,7 @@ term = ("$ curl -H \"Authorization: Bearer $TOKEN\" \\\n"
         "    -F role=sender -F files=@sender.pdf  $URL/companies/demo/documents\n"
         "$ curl ... -F role=receiver -F files=@receiver.pdf  .../documents\n"
         "$ curl -X POST $URL/generate -d '{\"pair_id\":\"demo\",\"prompt\":\"…\"}'\n"
-        "    → 202  {\"job_id\":\"…\"}\n"
-        "$ curl $URL/generate/demo/<job_id>   → { status: done, result: {…} }")
+        "    → 200  { template_id, blocks:[…], confidence, meta:{…} }")
 b = s.shapes.add_shape(MSO_SHAPE.ROUNDED_RECTANGLE, In(0.85), In(2.15), In(7.1), In(2.7))
 b.fill.solid(); b.fill.fore_color.rgb = rgb("0A0E16"); b.line.color.rgb = rgb("2C3647"); b.shadow.inherit = False
 _txt(s, term, 1.05, 2.35, 6.8, 2.4, size=11, color="9FE8DF", font=MONO, spacing=1.25)
@@ -263,23 +286,54 @@ _txt(s, "Output, grounded in the PDFs:\n“Turn Vanguard's idle time into delive
      0.85, 5.2, 7.1, 0.9, size=13.5, color=ICE, spacing=1.15)
 footer(s, 9, dark=True)
 
-# ── 10 · roadmap ──────────────────────────────────────────────────────────────
+# ── 10 · why these choices ─────────────────────────────────────────────────────
 s = sld(WHITE)
-eyebrow(s, "ROADMAP")
+eyebrow(s, "DESIGN DECISIONS")
+title(s, "Why these choices?")
+_txt(s, "Pragmatism over shiny — the simplest thing that works, with the upgrade path named.",
+     0.85, 1.72, 11.6, 0.4, size=14, color=SLATE)
+decisions = [
+    ("Deterministic typed pipeline — not an agent",
+     "predictable, testable, traceable; ADK / Agent Engine only when we add tools or a HITL pause"),
+    ("Long-context grounding — not RAG",
+     "a bounded two-company corpus fits in context — full traceability, no vector DB; RAG when it grows"),
+    ("Managed Gemini on Vertex — not self-hosted",
+     "ship now at ~$0.01 / brochure with no GPUs to run; revisit fine-tuning only at real volume"),
+    ("Limits & images enforced in code — not the model",
+     "the LLM is great at language, weak at counting/choosing — code owns word limits, image slots, JSON"),
+    ("Cloud Run — not GKE or Agent Engine",
+     "stateless + tool-less → scale-to-zero, a tiny blast radius and minimal ops"),
+]
+y = 2.35; h = 0.8; gap = 0.1
+for t, why in decisions:
+    box(s, 0.85, y, 11.6, h, fill=LIGHT, line=LINE)
+    _txt(s, t, 1.15, y + 0.12, 11.0, 0.32, size=14, color=INK, bold=True, font=DISPLAY)
+    _txt(s, why, 1.15, y + 0.46, 11.0, 0.3, size=11.5, color=SLATE)
+    y += h + gap
+footer(s, 10)
+
+# ── 11 · roadmap + trade-offs ──────────────────────────────────────────────────
+s = sld(WHITE)
+eyebrow(s, "ROADMAP & TRADE-OFFS")
 title(s, "A working slice today — a clear path to scale")
 cards = [
-    ("Multi-tenancy", "tenant from the token; per-tenant CMEK + budgets (plumbing already in place)"),
-    ("Org dashboard", "every generation → BigQuery → Looker: cost/brochure, groundedness, throughput"),
-    ("Go agentic → Agent Engine", "when we add tools (live research, image sourcing) or a HITL pause"),
-    ("Harden", "EU-region model residency · tune the faithfulness judge · golden eval set in CI"),
+    ("Multi-tenancy", "tenant from the token; per-tenant CMEK + budgets",
+     "single-tenant ships now — keys already threaded, so it's config not a refactor"),
+    ("Org dashboard", "every generation → BigQuery → Looker (cost, groundedness, throughput)",
+     "the BigQuery export is built — only the Looker wiring is left"),
+    ("Go agentic → Agent Engine", "tools (live research, image sourcing) or a HITL pause",
+     "agents add cost + opacity — not until there are real tools to call"),
+    ("Harden", "tune the faithfulness judge · golden eval set in CI",
+     "model calls use the global endpoint today — EU residency is the open gap"),
 ]
-xs = [0.85, 6.75]; ys = [2.45, 4.55]; w = 5.7; h = 1.85
-for i, (t, d) in enumerate(cards):
+xs = [0.85, 6.75]; ys = [2.35, 4.5]; w = 5.7; h = 2.0
+for i, (t, d, trade) in enumerate(cards):
     x = xs[i % 2]; y = ys[i // 2]
     box(s, x, y, w, h, fill=LIGHT, line=LINE)
-    _txt(s, t, x + 0.3, y + 0.25, w - 0.6, 0.5, size=15, color=INK, bold=True, font=DISPLAY)
-    _txt(s, d, x + 0.3, y + 0.85, w - 0.6, 0.9, size=13, color=SLATE, spacing=1.15)
-footer(s, 10)
+    _txt(s, t, x + 0.3, y + 0.2, w - 0.6, 0.4, size=15, color=INK, bold=True, font=DISPLAY)
+    _txt(s, d, x + 0.3, y + 0.64, w - 0.6, 0.7, size=12.5, color=SLATE, spacing=1.12)
+    _txt(s, "trade-off:  " + trade, x + 0.3, y + 1.42, w - 0.6, 0.5, size=11, color=AMBER, spacing=1.1)
+footer(s, 11)
 
 import os
 out = os.path.join(os.path.dirname(os.path.abspath(__file__)), "Case2_GenAI_Collateral.pptx")

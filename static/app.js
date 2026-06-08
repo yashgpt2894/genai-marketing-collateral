@@ -32,20 +32,23 @@ async function checkHealth() {
   }
 }
 
-async function loadTemplates() {
+// built-in layouts (the /templates endpoint was removed; these mirror app/templates_def)
+const BUILTIN_TEMPLATES = [
+  { id: "one_pager_v1", name: "One-pager bridge article" },
+  { id: "two_column_v1", name: "Two-column feature" },
+  { id: "feature_v1", name: "Feature one-pager (logo + hero + chart)" },
+  { id: "executive_mono_v1", name: "Monochrome executive (2-page)" },
+];
+
+function loadTemplates() {
   const sel = $("#template");
-  try {
-    const r = await fetch("/templates");
-    state.templates = await r.json();
-    sel.innerHTML = "";
-    state.templates.forEach((t) => {
-      const o = document.createElement("option");
-      o.value = t.id; o.textContent = `${t.name} (${t.blocks.length} blocks)`;
-      sel.appendChild(o);
-    });
-  } catch {
-    sel.innerHTML = '<option value="one_pager_v1">One-pager bridge article</option>';
-  }
+  sel.innerHTML = "";
+  BUILTIN_TEMPLATES.forEach((t) => {
+    const o = document.createElement("option");
+    o.value = t.id; o.textContent = t.name;
+    sel.appendChild(o);
+  });
+  state.templates = BUILTIN_TEMPLATES;
 }
 
 /* ───────────── uploads (multipart) + job polling ───────────── */
@@ -110,34 +113,17 @@ async function generate() {
   btn.disabled = true; const label = btn.textContent; btn.textContent = "generating…";
   try {
     const body = { pair_id: state.pair, prompt: $("#prompt").value.trim(), template_id: $("#template").value };
-    // async: POST returns a job_id (202); poll until the article is ready.
+    // synchronous (the brief's contract): POST /generate returns the ArticleJSON directly.
     const r = await fetch("/generate", {
       method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body),
     });
     if (!r.ok) { const e = await r.json().catch(() => ({})); throw new Error(e.detail || r.statusText); }
-    const job = await r.json();                 // { job_id, status, poll }
-    render(await pollGenerate(job.job_id));
+    render(await r.json());                     // the full article — no polling needed
   } catch (e) {
     err.hidden = false; err.textContent = String(e.message || e);
   } finally {
     btn.disabled = false; btn.textContent = label;
   }
-}
-
-function pollGenerate(jobId) {
-  return new Promise((resolve, reject) => {
-    const tick = async (n) => {
-      if (n > 60) return reject(new Error("generation timed out"));
-      try {
-        const r = await fetch(`/generate/${encodeURIComponent(state.pair)}/${jobId}`);
-        const j = await r.json();
-        if (j.status === "done") return resolve(j.result);
-        if (j.status === "error") return reject(new Error(j.message || "generation error"));
-      } catch { /* transient — keep polling */ }
-      setTimeout(() => tick(n + 1), 1500);
-    };
-    tick(0);
-  });
 }
 
 /* ───────────── render ───────────── */

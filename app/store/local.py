@@ -22,7 +22,7 @@ from pathlib import Path
 from typing import Optional
 
 from app.config import get_settings
-from app.schemas import ArticleJSON, CompanyBrief, TemplateModel
+from app.schemas import ArticleJSON, CompanyBrief
 from app.store.base import content_type_for
 
 _SAFE = re.compile(r"[^a-zA-Z0-9_\-.]")
@@ -147,34 +147,3 @@ class LocalStore:
     def load_output(self, tenant: str, pair_id: str, request_id: str) -> Optional[ArticleJSON]:
         p = self._pair_dir(tenant, pair_id) / "outputs" / f"{_safe(request_id)}.json"
         return ArticleJSON.model_validate_json(p.read_text()) if p.exists() else None
-
-    # -- custom templates (tenant-scoped) --------------------------------------
-    def _templates_dir(self, tenant: str) -> Path:
-        d = self.root / _safe(tenant) / "templates"
-        d.mkdir(parents=True, exist_ok=True)
-        return d
-
-    def save_template(self, tenant: str, template: TemplateModel) -> None:
-        (self._templates_dir(tenant) / f"{_safe(template.id)}.json").write_text(
-            template.model_dump_json(indent=2))
-
-    def list_templates(self, tenant: str) -> list[TemplateModel]:
-        d = self._templates_dir(tenant)
-        out: list[TemplateModel] = []
-        for p in sorted(d.glob("*.json")):
-            try:
-                out.append(TemplateModel.model_validate_json(p.read_text()))
-            except Exception:
-                continue  # skip a corrupt/legacy file rather than fail the whole list
-        return out
-
-    def load_template(self, tenant: str, template_id: str) -> Optional[TemplateModel]:
-        p = self._templates_dir(tenant) / f"{_safe(template_id)}.json"
-        return TemplateModel.model_validate_json(p.read_text()) if p.exists() else None
-
-    def delete_template(self, tenant: str, template_id: str) -> bool:
-        p = self._templates_dir(tenant) / f"{_safe(template_id)}.json"
-        if p.exists():
-            p.unlink()
-            return True
-        return False

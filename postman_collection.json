@@ -1,90 +1,88 @@
 {
   "info": {
     "name": "Generative Marketing Collateral API",
-    "description": "ML6 Case 2 — two-endpoint API: upload two companies' context PDFs, then generate a tailored, factually-grounded B2B article as layout-valid structured JSON.\n\nBASE URL is preset to the deployed Cloud Run service (edit the `baseUrl` collection variable for local: http://localhost:8000).\n\nAUTH: in demo mode no token is needed. When the service runs with AUTH_MODE=google, set the `token` collection variable to a Google ID token:\n  gcloud auth print-identity-token --audiences={{baseUrl}}\n(The collection sends it as a Bearer token on every request.)\n\nTYPICAL FLOW:\n  1. Upload sender PDF  (pick sample_data/sender_nimbus_ai.pdf)\n  2. Upload receiver PDF (pick sample_data/receiver_vanguard_freight.pdf)\n  3. Get briefs — poll until both sender and receiver are non-null\n  4. Generate — returns 202 + job_id (auto-saved to a variable by a test script)\n  5. Poll generation — until status=done; ArticleJSON is under `result`.",
+    "description": "ML6 Case 2 \u2014 two-endpoint API: upload two companies' context PDFs, then generate a tailored, factually-grounded B2B article as layout-valid structured JSON.\n\nBASE URL is preset to the deployed Cloud Run service (edit the `baseUrl` collection variable for local: http://localhost:8000).\n\nAUTH: in demo mode no token is needed. When the service runs with AUTH_MODE=google, set the `token` collection variable to a Google ID token:\n  gcloud auth print-identity-token --audiences={{baseUrl}}\n(The collection sends it as a Bearer token on every request.)\n\nTYPICAL FLOW:\n  1. Upload sender PDF  (pick sample_data/sender_nimbus_ai.pdf)\n  2. Upload receiver PDF (pick sample_data/receiver_vanguard_freight.pdf)\n  3. Get briefs \u2014 poll until both sender and receiver are non-null\n  4. Generate \u2014 returns the full ArticleJSON directly (synchronous; no polling)",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "auth": {
     "type": "bearer",
-    "bearer": [{ "key": "token", "value": "{{token}}", "type": "string" }]
+    "bearer": [
+      {
+        "key": "token",
+        "value": "{{token}}",
+        "type": "string"
+      }
+    ]
   },
   "variable": [
-    { "key": "baseUrl", "value": "https://collateral-api-jcpyg2mozq-ew.a.run.app" },
-    { "key": "pair_id", "value": "demo1" },
-    { "key": "job_id", "value": "" },
-    { "key": "asset_id", "value": "receiver0_img_1_0" },
-    { "key": "template_id", "value": "promo_card_v1" },
-    { "key": "tenant", "value": "" },
-    { "key": "token", "value": "" }
+    {
+      "key": "baseUrl",
+      "value": "https://collateral-api-jcpyg2mozq-ew.a.run.app"
+    },
+    {
+      "key": "pair_id",
+      "value": "demo1"
+    },
+    {
+      "key": "job_id",
+      "value": ""
+    },
+    {
+      "key": "asset_id",
+      "value": "receiver0_img_1_0"
+    },
+    {
+      "key": "template_id",
+      "value": "promo_card_v1"
+    },
+    {
+      "key": "tenant",
+      "value": ""
+    },
+    {
+      "key": "token",
+      "value": ""
+    }
   ],
   "item": [
-    {
-      "name": "List templates",
-      "request": {
-        "method": "GET",
-        "header": [],
-        "url": { "raw": "{{baseUrl}}/templates", "host": ["{{baseUrl}}"], "path": ["templates"] },
-        "description": "Lists the layout templates (built-in + any this tenant has created). Also the recommended liveness check — use this instead of /healthz, which Google's front end shadows on *.run.app."
-      }
-    },
-    {
-      "name": "Create template",
-      "request": {
-        "method": "POST",
-        "header": [
-          { "key": "Content-Type", "value": "application/json" },
-          { "key": "X-Tenant-ID", "value": "{{tenant}}", "type": "text", "disabled": true }
-        ],
-        "body": {
-          "mode": "raw",
-          "raw": "{\"id\": \"promo_card_v1\", \"name\": \"Promo card\", \"palette\": [\"0FB5A6\", \"10151E\", \"FFFFFF\"], \"blocks\": [{\"id\": \"headline\", \"type\": \"heading\", \"min_words\": 3, \"max_words\": 8, \"theme_color\": \"0FB5A6\"}, {\"id\": \"body\", \"type\": \"body\", \"min_words\": 20, \"max_words\": 95}, {\"id\": \"cta\", \"type\": \"cta\", \"min_words\": 3, \"max_words\": 12}]}",
-          "options": { "raw": { "language": "json" } }
-        },
-        "url": { "raw": "{{baseUrl}}/templates", "host": ["{{baseUrl}}"], "path": ["templates"] },
-        "description": "Create a custom layout template (tenant-scoped). After this it appears in GET /templates and the UI dropdown, and can be passed as template_id to /generate. Validated: unique block ids, min<=max words, 6-digit hex palette, each block theme_color must be one of the palette colours. 201 on success; 409 if the id collides with a built-in or an existing template; 422 on a malformed body. Block types: heading, subheading, body, caption, cta."
-      }
-    },
-    {
-      "name": "Update template",
-      "request": {
-        "method": "PUT",
-        "header": [
-          { "key": "Content-Type", "value": "application/json" },
-          { "key": "X-Tenant-ID", "value": "{{tenant}}", "type": "text", "disabled": true }
-        ],
-        "body": {
-          "mode": "raw",
-          "raw": "{\"id\": \"promo_card_v1\", \"name\": \"Promo card (edited)\", \"palette\": [\"0FB5A6\", \"10151E\", \"FFFFFF\"], \"blocks\": [{\"id\": \"headline\", \"type\": \"heading\", \"min_words\": 3, \"max_words\": 10, \"theme_color\": \"0FB5A6\"}, {\"id\": \"body\", \"type\": \"body\", \"min_words\": 20, \"max_words\": 120}, {\"id\": \"cta\", \"type\": \"cta\", \"min_words\": 3, \"max_words\": 12}]}",
-          "options": { "raw": { "language": "json" } }
-        },
-        "url": { "raw": "{{baseUrl}}/templates/{{template_id}}", "host": ["{{baseUrl}}"], "path": ["templates", "{{template_id}}"] },
-        "description": "Replace a custom template (full update). The body `id` must match the path `{{template_id}}`. Built-ins are read-only. 200 on success; 409 built-in; 400 id mismatch; 404 not found; 422 invalid body."
-      }
-    },
-    {
-      "name": "Delete template",
-      "request": {
-        "method": "DELETE",
-        "header": [
-          { "key": "X-Tenant-ID", "value": "{{tenant}}", "type": "text", "disabled": true }
-        ],
-        "url": { "raw": "{{baseUrl}}/templates/{{template_id}}", "host": ["{{baseUrl}}"], "path": ["templates", "{{template_id}}"] },
-        "description": "Delete a custom template (tenant-scoped). 200 {deleted}; 409 if it's a built-in (read-only); 404 if it doesn't exist."
-      }
-    },
     {
       "name": "1. Upload sender PDF",
       "request": {
         "method": "POST",
-        "header": [{ "key": "X-Tenant-ID", "value": "{{tenant}}", "type": "text", "disabled": true }],
+        "header": [
+          {
+            "key": "X-Tenant-ID",
+            "value": "{{tenant}}",
+            "type": "text",
+            "disabled": true
+          }
+        ],
         "body": {
           "mode": "formdata",
           "formdata": [
-            { "key": "role", "value": "sender", "type": "text" },
-            { "key": "files", "type": "file", "src": [] }
+            {
+              "key": "role",
+              "value": "sender",
+              "type": "text"
+            },
+            {
+              "key": "files",
+              "type": "file",
+              "src": []
+            }
           ]
         },
-        "url": { "raw": "{{baseUrl}}/companies/{{pair_id}}/documents", "host": ["{{baseUrl}}"], "path": ["companies", "{{pair_id}}", "documents"] },
+        "url": {
+          "raw": "{{baseUrl}}/companies/{{pair_id}}/documents",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "companies",
+            "{{pair_id}}",
+            "documents"
+          ]
+        },
         "description": "Upload the SENDER company's PDF. In the 'files' form field, choose sample_data/sender_nimbus_ai.pdf. Parsed asynchronously into a typed brief; returns a job_id. (Enable the X-Tenant-ID header to exercise multi-tenancy.)"
       }
     },
@@ -92,15 +90,40 @@
       "name": "2. Upload receiver PDF",
       "request": {
         "method": "POST",
-        "header": [{ "key": "X-Tenant-ID", "value": "{{tenant}}", "type": "text", "disabled": true }],
+        "header": [
+          {
+            "key": "X-Tenant-ID",
+            "value": "{{tenant}}",
+            "type": "text",
+            "disabled": true
+          }
+        ],
         "body": {
           "mode": "formdata",
           "formdata": [
-            { "key": "role", "value": "receiver", "type": "text" },
-            { "key": "files", "type": "file", "src": [] }
+            {
+              "key": "role",
+              "value": "receiver",
+              "type": "text"
+            },
+            {
+              "key": "files",
+              "type": "file",
+              "src": []
+            }
           ]
         },
-        "url": { "raw": "{{baseUrl}}/companies/{{pair_id}}/documents", "host": ["{{baseUrl}}"], "path": ["companies", "{{pair_id}}", "documents"] },
+        "url": {
+          "raw": "{{baseUrl}}/companies/{{pair_id}}/documents",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "companies",
+            "{{pair_id}}",
+            "documents"
+          ]
+        },
         "description": "Upload the RECEIVER company's PDF. In the 'files' form field, choose sample_data/receiver_vanguard_freight.pdf."
       }
     },
@@ -109,12 +132,21 @@
       "request": {
         "method": "GET",
         "header": [],
-        "url": { "raw": "{{baseUrl}}/companies/{{pair_id}}", "host": ["{{baseUrl}}"], "path": ["companies", "{{pair_id}}"] },
+        "url": {
+          "raw": "{{baseUrl}}/companies/{{pair_id}}",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "companies",
+            "{{pair_id}}"
+          ]
+        },
         "description": "Returns the stored sender/receiver briefs. Poll until BOTH are non-null before generating."
       }
     },
     {
-      "name": "4. Generate (202 + job_id)",
+      "name": "4. Generate -> ArticleJSON (synchronous)",
       "event": [
         {
           "listen": "test",
@@ -122,11 +154,12 @@
             "type": "text/javascript",
             "exec": [
               "var j = pm.response.json();",
-              "if (j && j.job_id) {",
-              "  pm.collectionVariables.set('job_id', j.job_id);",
-              "  if (j.pair_id) { pm.collectionVariables.set('pair_id', j.pair_id); }",
-              "  console.log('saved pair_id=' + j.pair_id + ', job_id=' + j.job_id + ' -> open \"5. Poll generation\" and hit Send');",
-              "}"
+              "if (j && j.pair_id) { pm.collectionVariables.set('pair_id', j.pair_id); }",
+              "if (j && j.meta && j.meta.request_id) { pm.collectionVariables.set('job_id', j.meta.request_id); }",
+              "var id = Object.values((j && j.assets) || {})[0];",
+              "if (!id && j && Array.isArray(j.blocks)) { var b = j.blocks.filter(function(x){ return x.image_ref; })[0]; if (b) { id = b.image_ref; } }",
+              "if (id) { pm.collectionVariables.set('asset_id', id); }",
+              "console.log('synchronous generate: ArticleJSON returned; saved pair_id, job_id (meta.request_id), first asset_id');"
             ]
           }
         }
@@ -134,87 +167,50 @@
       "request": {
         "method": "POST",
         "header": [
-          { "key": "Content-Type", "value": "application/json" },
-          { "key": "Idempotency-Key", "value": "", "type": "text", "disabled": true },
-          { "key": "X-Tenant-ID", "value": "{{tenant}}", "type": "text", "disabled": true }
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "Idempotency-Key",
+            "value": "",
+            "type": "text",
+            "disabled": true
+          },
+          {
+            "key": "X-Tenant-ID",
+            "value": "{{tenant}}",
+            "type": "text",
+            "disabled": true
+          }
         ],
         "body": {
           "mode": "raw",
           "raw": "{\"pair_id\": \"{{pair_id}}\", \"prompt\": \"Show how Nimbus cuts Vanguard's idle fleet hours and improves on-time delivery\", \"template_id\": \"one_pager_v1\"}",
-          "options": { "raw": { "language": "json" } }
-        },
-        "url": { "raw": "{{baseUrl}}/generate", "host": ["{{baseUrl}}"], "path": ["generate"] },
-        "description": "Starts generation. Returns 202 + job_id immediately (never blocks on the model). A test script auto-saves job_id to the collection variable so the Poll request just works. Enable the Idempotency-Key header to make retries return the same job."
-      }
-    },
-    {
-      "name": "5. Poll generation -> ArticleJSON",
-      "event": [
-        {
-          "listen": "test",
-          "script": {
-            "type": "text/javascript",
-            "exec": [
-              "var r = (pm.response.json() || {}).result || {};",
-              "var id = Object.values(r.assets || {})[0];",
-              "if (!id && Array.isArray(r.blocks)) { var b = r.blocks.filter(function(x){ return x.image_ref; })[0]; if (b) { id = b.image_ref; } }",
-              "if (id) { pm.collectionVariables.set('asset_id', id); console.log('saved asset_id=' + id + ' -> the Get asset request now works'); }"
-            ]
+          "options": {
+            "raw": {
+              "language": "json"
+            }
           }
-        }
-      ],
-      "request": {
-        "method": "GET",
-        "header": [],
-        "url": { "raw": "{{baseUrl}}/generate/{{pair_id}}/{{job_id}}", "host": ["{{baseUrl}}"], "path": ["generate", "{{pair_id}}", "{{job_id}}"] },
-        "description": "Open this right after Generate and hit Send — {{pair_id}} and {{job_id}} are auto-filled from the Generate response (no need to copy the poll path, and note the variable is {{baseUrl}} with a capital U). Poll until status=done; the finished ArticleJSON (blocks, confidence, constraints, faithfulness, token/cost) is under `result`."
-      }
-    },
-    {
-      "name": "Parse job status",
-      "request": {
-        "method": "GET",
-        "header": [],
-        "url": { "raw": "{{baseUrl}}/jobs/{{pair_id}}/{{job_id}}", "host": ["{{baseUrl}}"], "path": ["jobs", "{{pair_id}}", "{{job_id}}"] },
-        "description": "Status of an upload/parse job — use the job_id returned by an Upload request."
-      }
-    },
-    {
-      "name": "List jobs (for a pair)",
-      "request": {
-        "method": "GET",
-        "header": [],
+        },
         "url": {
-          "raw": "{{baseUrl}}/jobs/{{pair_id}}?type=&status=&limit=50",
-          "host": ["{{baseUrl}}"],
-          "path": ["jobs", "{{pair_id}}"],
+          "raw": "{{baseUrl}}/generate",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "generate"
+          ],
           "query": [
-            { "key": "type", "value": "", "description": "parse | generate", "disabled": true },
-            { "key": "status", "value": "", "description": "processing | done | error", "disabled": true },
-            { "key": "limit", "value": "50", "disabled": true }
+            {
+              "key": "async",
+              "value": "true",
+              "disabled": true,
+              "description": "enable to run in the background -> 202 + job_id; then use request 5 to poll"
+            }
           ]
         },
-        "description": "All jobs for the pair (parse + generate), newest first, each with kind/status/created_at/updated_at. Enable the query params to filter by type or status, or cap with limit."
-      }
-    },
-    {
-      "name": "Get asset (extracted image)",
-      "request": {
-        "method": "GET",
-        "header": [],
-        "url": { "raw": "{{baseUrl}}/assets/{{pair_id}}/{{asset_id}}", "host": ["{{baseUrl}}"], "path": ["assets", "{{pair_id}}", "{{asset_id}}"] },
-        "description": "Fetch an image/logo extracted from the PDFs during parsing. asset_id is NOT arbitrary — use a real one: from GET /companies/{pair} (each brief's images[].id and logo_asset, e.g. receiver0_img_1_0) or a generated article's assets map / a block image_ref. The Poll request auto-saves one into {{asset_id}}, so after polling a done article this just works. Returns the PNG/JPEG bytes; 404 if the id is empty or doesn't exist for this pair."
-      }
-    },
-    {
-      "name": "Delete asset",
-      "request": {
-        "method": "DELETE",
-        "header": [
-          { "key": "X-Tenant-ID", "value": "{{tenant}}", "type": "text", "disabled": true }
-        ],
-        "url": { "raw": "{{baseUrl}}/assets/{{pair_id}}/{{asset_id}}", "host": ["{{baseUrl}}"], "path": ["assets", "{{pair_id}}", "{{asset_id}}"] },
-        "description": "Delete an extracted image/logo asset. 200 {deleted}; 404 if the asset_id doesn't exist for this pair."
+        "description": "The brief's second endpoint. Synchronous by default: returns the full ArticleJSON in the response (blocks, confidence, constraints, faithfulness, token/cost) \u2014 no polling needed. A test script saves pair_id, the request_id (as job_id) and the first asset_id so the other requests just work. Enable the Idempotency-Key header to make retries reuse the same result. For long/bursty jobs, enable the `async=true` query param to get 202 + job_id and poll with request 5."
       }
     }
   ]

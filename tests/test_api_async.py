@@ -1,10 +1,15 @@
 """
-API integration test for the async /generate contract (no network, no real model).
+API integration test for the /generate contract (no network, no real model).
 
 We inject a fake LLM + a temp LocalStore into the app and drive it with FastAPI's
-TestClient. TestClient runs the BackgroundTask during the POST, so by the time we
-poll, the job is done — proving: POST returns 202 + job_id (never blocks), the
-work runs off the request path, and the poll endpoint returns the full ArticleJSON.
+TestClient. Two paths are covered:
+  * default (synchronous): POST /generate returns the full ArticleJSON (200) — the
+    brief's contract (one POST to upload, one POST to generate -> JSON);
+  * opt-in async (?async=true): POST returns 202 + job_id, the work runs off the
+    request path (TestClient runs the BackgroundTask during the POST), and the GET
+    poll then returns the article.
+Also covers missing-briefs 409, unknown-job 404, auth on/off, the upload size cap,
+and idempotency-key dedup.
 """
 import os
 import sys
@@ -32,11 +37,26 @@ def _client(tmp_path):
     return TestClient(main.app)
 
 
-def test_generate_returns_202_then_pollable_result(tmp_path):
+def test_generate_sync_returns_article(tmp_path):
+    """Default contract (the brief): POST /generate returns the full ArticleJSON (200)."""
     client = _client(tmp_path)
 
     r = client.post("/generate", json={"pair_id": "p1", "prompt": "show value",
                                         "template_id": "one_pager_v1"})
+    assert r.status_code == 200, r.text                  # synchronous: the article, not a job handle
+    res = r.json()
+    assert res["pair_id"] == "p1" and res["blocks"]
+    assert res["template_id"] == "one_pager_v1"
+    assert "confidence" in res and "constraints" in res
+    assert "cost_usd" in res["meta"] and "total_tokens" in res["meta"]
+
+
+def test_generate_async_returns_202_then_pollable_result(tmp_path):
+    """Opt-in async (?async=true): POST returns 202 + job_id; the GET poll returns the article."""
+    client = _client(tmp_path)
+
+    r = client.post("/generate?async=true", json={"pair_id": "p1", "prompt": "show value",
+                                                   "template_id": "one_pager_v1"})
     assert r.status_code == 202, r.text                  # accepted, not blocked
     job = r.json()
     assert job["status"] == "processing" and job["job_id"] and job["poll"]
@@ -93,10 +113,15 @@ def test_generate_idempotency_key_dedups(tmp_path):
     client = _client(tmp_path)
     hdr = {"Idempotency-Key": "abc-123"}
     body = {"pair_id": "p1", "prompt": "make an article", "template_id": "one_pager_v1"}
-    j1 = client.post("/generate", json=body, headers=hdr).json()
-    j2 = client.post("/generate", json=body, headers=hdr).json()
-    assert j1["job_id"] == j2["job_id"]          # same key -> same job
-    assert j2.get("idempotent") is True
+    # sync: same key -> same job id stamped in the article meta, and no duplicate job
+    a1 = client.post("/generate", json=body, headers=hdr).json()
+    a2 = client.post("/generate", json=body, headers=hdr).json()
+    assert a1["meta"]["request_id"] == a2["meta"]["request_id"]
+    assert a1["meta"]["request_id"].startswith("idem")
+    assert len(client.get("/jobs/p1?type=generate").json()["jobs"]) == 1   # one job, not two
+    # async path hands back the same job id + the explicit idempotent flag
+    h = client.post("/generate?async=true", json=body, headers=hdr).json()
+    assert h["job_id"] == a1["meta"]["request_id"] and h.get("idempotent") is True
 
 
 # --- jobs listing ------------------------------------------------------------
@@ -115,11 +140,12 @@ def test_set_job_enriches_and_preserves_created_at(tmp_path):
 
 def test_list_jobs_endpoint_and_filters(tmp_path):
     client = _client(tmp_path)
-    job = client.post("/generate", json={"pair_id": "p1", "prompt": "show value",
+    res = client.post("/generate", json={"pair_id": "p1", "prompt": "show value",
                                          "template_id": "one_pager_v1"}).json()
+    jid = res["meta"]["request_id"]                      # sync returns the article; id is in meta
     body = client.get("/jobs/p1").json()
     assert body["pair_id"] == "p1" and body["count"] >= 1
-    row = [x for x in body["jobs"] if x["job_id"] == job["job_id"]][0]
+    row = [x for x in body["jobs"] if x["job_id"] == jid][0]
     assert row["kind"] == "generate" and row["created_at"] and row["status"] == "done"
     assert all(x["kind"] == "generate" for x in client.get("/jobs/p1?type=generate").json()["jobs"])
     assert client.get("/jobs/p1?type=parse").json()["jobs"] == []   # no parse jobs in this setup

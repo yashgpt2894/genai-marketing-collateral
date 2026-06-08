@@ -3,10 +3,9 @@ FastAPI app — the two endpoints from the brief, plus supporting routes and the
 
   POST /companies/{pair_id}/documents   upload sender/receiver PDFs -> parse -> briefs
   POST /generate                        {pair_id, prompt, template_id} -> ArticleJSON
+                                        (synchronous by default; ?async=true -> 202 + poll URL)
+  GET  /generate/{pair}/{job}           (optional) poll an async job / re-fetch a past result
 
-  GET  /templates            list templates (built-in + tenant custom)
-  POST /templates            create a custom template (tenant-scoped)
-  PUT  /templates/{id}       edit a custom template  ·  DELETE /templates/{id}  delete it
   GET  /companies/{pair_id}  the stored briefs
   GET  /jobs/{pair_id}       list jobs (parse + generate)  ·  GET /jobs/{pair}/{job}  one job
   GET  /assets/{pair}/{id}   serve an extracted image  ·  DELETE /assets/{pair}/{id}  delete it
@@ -19,6 +18,9 @@ Design notes:
     until real auth supplies it) — so the API is multi-tenant from the ground up.
   * Parsing can be slow, so uploads run in a BackgroundTask and return a job id
     (Pub/Sub + Cloud Run jobs in production).
+  * /generate is synchronous by default — it returns the ArticleJSON in the response
+    (the brief's contract). ?async=true runs it in the background and returns 202 +
+    a poll URL, for very long or bursty jobs.
   * Uploads are idempotent per (pair_id, role, filename).
   * Every response carries an X-Request-ID; generation stamps model/prompt/template
     versions for reproducibility.
@@ -45,14 +47,13 @@ from fastapi.staticfiles import StaticFiles
 from app.auth import require_identity
 from app.cache import brief_fingerprint, gen_cache_key, get_cache, load_cached
 from app.config import get_settings
-from app.constraints_core import TemplateSpec
 from app.generate.pipeline import run_generation
 from app.metrics import emit_generation_metric
 from app.ingest.brief_builder import build_brief
 from app.llm.gemini import GeminiClient, LLMError, LLMNotConfigured
-from app.schemas import BriefsResponse, GenerateRequest, TemplateModel, UploadResponse
+from app.schemas import BriefsResponse, GenerateRequest, UploadResponse
 from app.store import get_store
-from app.templates_def.templates import get_template, list_templates
+from app.templates_def.templates import get_template
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s :: %(message)s")
 log = logging.getLogger("collateral.api")
@@ -91,73 +92,6 @@ def healthz():
         "auth": "vertex" if s.use_vertex else ("developer_api" if s.gemini_api_key else "none"),
         "auth_mode": s.auth_mode,
     }
-
-
-@app.get("/templates", response_model=list[TemplateModel])
-def templates(tenant: str = Depends(get_tenant), principal: str = Depends(require_identity)):
-    """Built-in templates plus any this tenant has created."""
-    return [TemplateModel.from_spec(t) for t in list_templates()] + store.list_templates(tenant)
-
-
-@app.post("/templates", status_code=201, response_model=TemplateModel)
-def create_template(t: TemplateModel, tenant: str = Depends(get_tenant),
-                    principal: str = Depends(require_identity)):
-    """Create a custom layout template (tenant-scoped). It then shows up in GET /templates
-    and the UI dropdown, and can be passed as `template_id` to /generate. The body is
-    validated (unique block ids, min<=max words, hex palette, theme colours in palette)."""
-    if t.id in {bt.id for bt in list_templates()}:
-        raise HTTPException(status_code=409, detail=f"'{t.id}' is a built-in template id; choose another")
-    if store.load_template(tenant, t.id) is not None:
-        raise HTTPException(status_code=409, detail=f"template '{t.id}' already exists for this tenant")
-    try:
-        t.to_spec()  # must map cleanly onto the framework-free core contract
-    except Exception as e:
-        raise HTTPException(status_code=422, detail=f"invalid template: {e}")
-    store.save_template(tenant, t)
-    log.info("created template '%s' for tenant=%s (by %s)", t.id, tenant, principal)
-    return t
-
-
-@app.put("/templates/{template_id}", response_model=TemplateModel)
-def update_template(template_id: str, t: TemplateModel, tenant: str = Depends(get_tenant),
-                    principal: str = Depends(require_identity)):
-    """Replace a custom template (full update). Built-in templates are read-only."""
-    if template_id in {bt.id for bt in list_templates()}:
-        raise HTTPException(status_code=409, detail=f"'{template_id}' is a built-in template (read-only)")
-    if t.id != template_id:
-        raise HTTPException(status_code=400, detail=f"body id '{t.id}' must match the path id '{template_id}'")
-    if store.load_template(tenant, template_id) is None:
-        raise HTTPException(status_code=404, detail=f"template '{template_id}' not found for this tenant")
-    try:
-        t.to_spec()
-    except Exception as e:
-        raise HTTPException(status_code=422, detail=f"invalid template: {e}")
-    store.save_template(tenant, t)
-    log.info("updated template '%s' for tenant=%s (by %s)", template_id, tenant, principal)
-    return t
-
-
-@app.delete("/templates/{template_id}")
-def delete_template(template_id: str, tenant: str = Depends(get_tenant),
-                    principal: str = Depends(require_identity)):
-    """Delete a custom template. Built-in templates cannot be deleted."""
-    if template_id in {bt.id for bt in list_templates()}:
-        raise HTTPException(status_code=409, detail=f"'{template_id}' is a built-in template (cannot be deleted)")
-    if not store.delete_template(tenant, template_id):
-        raise HTTPException(status_code=404, detail=f"template '{template_id}' not found for this tenant")
-    log.info("deleted template '%s' for tenant=%s (by %s)", template_id, tenant, principal)
-    return {"deleted": template_id}
-
-
-def resolve_template(tenant: str, template_id: str) -> TemplateSpec:
-    """Built-in templates first, then this tenant's custom ones."""
-    try:
-        return get_template(template_id)
-    except KeyError:
-        custom = store.load_template(tenant, template_id)
-        if custom is None:
-            raise KeyError(f"unknown template '{template_id}'")
-        return custom.to_spec()
 
 
 @app.get("/companies/{pair_id}", response_model=BriefsResponse)
@@ -269,31 +203,41 @@ async def internal_parse(request: Request):
     return {"status": "ok"}
 
 
-def _generate_job(tenant, pair_id, request_id, sender, receiver, prompt, template):
-    """Heavy draft->verify->repair work, off the request path (Pub/Sub + worker in prod).
-    Checks the result cache first (skips the model on a hit), then emits a metrics row."""
+def _run_and_store(tenant, pair_id, request_id, sender, receiver, prompt, template):
+    """Draft -> verify -> repair (cache-checked), persist the article + job + metrics, and
+    RETURN the ArticleJSON. Shared by the synchronous route and the async background task.
+    Checks the result cache first (skips the model on a hit). Raises on failure — the caller
+    decides whether to surface it as an HTTP error (sync) or record it on the job (async)."""
     cache = get_cache()
     ckey = gen_cache_key(tenant, pair_id, prompt, template.id, brief_fingerprint(sender, receiver))
     t0 = time.monotonic()
-    try:
-        cached = load_cached(cache, ckey)
-        if cached is not None:
-            cached.meta.request_id = request_id  # re-stamp so storage/poll keys match this job
-            store.save_output(tenant, pair_id, cached)
-            store.set_job(tenant, pair_id, request_id, "done", "article ready (cache hit)")
-            log.info("cache hit %s tenant=%s pair=%s", request_id, tenant, pair_id)
-            emit_generation_metric(tenant, pair_id, cached,
-                                   latency_ms=int((time.monotonic() - t0) * 1000), cached=True)
-            return
 
-        result = run_generation(pair_id, sender, receiver, prompt, template, request_id, llm=llm)
-        store.save_output(tenant, pair_id, result)
-        store.set_job(tenant, pair_id, request_id, "done", "article ready")
-        cache.set(ckey, result.model_dump_json(), get_settings().cache_ttl_seconds)
-        log.info("generated %s tenant=%s pair=%s (%d tok, $%.4f)",
-                 request_id, tenant, pair_id, result.meta.total_tokens, result.meta.cost_usd)
-        emit_generation_metric(tenant, pair_id, result,
-                               latency_ms=int((time.monotonic() - t0) * 1000), cached=False)
+    cached = load_cached(cache, ckey)
+    if cached is not None:
+        cached.meta.request_id = request_id  # re-stamp so storage/poll keys match this job
+        store.save_output(tenant, pair_id, cached)
+        store.set_job(tenant, pair_id, request_id, "done", "article ready (cache hit)")
+        emit_generation_metric(tenant, pair_id, cached,
+                               latency_ms=int((time.monotonic() - t0) * 1000), cached=True)
+        log.info("cache hit %s tenant=%s pair=%s", request_id, tenant, pair_id)
+        return cached
+
+    result = run_generation(pair_id, sender, receiver, prompt, template, request_id, llm=llm)
+    store.save_output(tenant, pair_id, result)
+    store.set_job(tenant, pair_id, request_id, "done", "article ready")
+    cache.set(ckey, result.model_dump_json(), get_settings().cache_ttl_seconds)
+    emit_generation_metric(tenant, pair_id, result,
+                           latency_ms=int((time.monotonic() - t0) * 1000), cached=False)
+    log.info("generated %s tenant=%s pair=%s (%d tok, $%.4f)",
+             request_id, tenant, pair_id, result.meta.total_tokens, result.meta.cost_usd)
+    return result
+
+
+def _generate_job(tenant, pair_id, request_id, sender, receiver, prompt, template):
+    """Async (?async=true) path: run the work off the request thread via a BackgroundTask,
+    funnelling any failure into the job record so the poll endpoint can report it."""
+    try:
+        _run_and_store(tenant, pair_id, request_id, sender, receiver, prompt, template)
     except LLMNotConfigured as e:
         store.set_job(tenant, pair_id, request_id, "error", str(e))
     except LLMError as e:
@@ -303,13 +247,21 @@ def _generate_job(tenant, pair_id, request_id, sender, receiver, prompt, templat
         store.set_job(tenant, pair_id, request_id, "error", f"{type(e).__name__}: {e}")
 
 
-@app.post("/generate", status_code=202)
+@app.post("/generate")
 def generate(req: GenerateRequest, background: BackgroundTasks,
              tenant: str = Depends(get_tenant), principal: str = Depends(require_identity),
-             idempotency_key: str | None = Header(default=None, alias="Idempotency-Key")):
-    """Accept the job and return a job_id immediately — never blocks on the model.
-    Poll GET /generate/{pair_id}/{job_id} for the result. Send an Idempotency-Key
-    header to make a retried POST return the same job instead of a duplicate."""
+             idempotency_key: str | None = Header(default=None, alias="Idempotency-Key"),
+             run_async: bool = Query(default=False, alias="async",
+                 description="run in the background and return 202 + a poll URL instead of blocking")):
+    """Generate the tailored article as structured JSON — the brief's second endpoint.
+
+    Default (synchronous): runs the pipeline and returns the full ArticleJSON in the
+    response body (200). This is the contract the brief asks for.
+
+    `?async=true`: enqueue the work and return 202 + a poll URL
+    (GET /generate/{pair_id}/{job_id}) — for very long or bursty jobs. Either way, send
+    an `Idempotency-Key` header to make a retried POST reuse the same job/result instead
+    of creating a duplicate."""
     if not llm.configured:
         raise HTTPException(status_code=503, detail=(
             "LLM not configured — set GEMINI_API_KEY (or Vertex env) before generating. See .env.example."
@@ -323,30 +275,62 @@ def generate(req: GenerateRequest, background: BackgroundTasks,
             f"Upload documents for both roles first."
         ))
     try:
-        template = resolve_template(tenant, req.template_id)
+        template = get_template(req.template_id)
     except KeyError as e:
         raise HTTPException(status_code=404, detail=str(e))
 
-    if idempotency_key:  # a retried POST with the same key returns the same job (no duplicate)
+    # idempotency: a retried POST with the same key reuses the same job id (no duplicate work)
+    if idempotency_key:
         request_id = "idem" + hashlib.sha1(
             f"{tenant}:{req.pair_id}:{idempotency_key}".encode()).hexdigest()[:12]
         existing = store.get_job(tenant, req.pair_id, request_id)
-        if existing:
-            return {"pair_id": req.pair_id, "job_id": request_id,
-                    "status": existing.get("status", "processing"),
-                    "poll": f"/generate/{req.pair_id}/{request_id}", "idempotent": True}
+        if existing and existing.get("status") == "done":
+            out = store.load_output(tenant, req.pair_id, request_id)
+            if out is not None:                       # already generated under this key
+                if run_async:
+                    return {"pair_id": req.pair_id, "job_id": request_id, "status": "done",
+                            "poll": f"/generate/{req.pair_id}/{request_id}", "idempotent": True}
+                return JSONResponse(out.model_dump())  # sync: hand back the same article
+        if existing and run_async:                    # async + still in flight -> same job handle
+            return JSONResponse(status_code=202, content={
+                "pair_id": req.pair_id, "job_id": request_id,
+                "status": existing.get("status", "processing"),
+                "poll": f"/generate/{req.pair_id}/{request_id}", "idempotent": True})
     else:
         request_id = uuid.uuid4().hex[:12]
-    store.set_job(tenant, req.pair_id, request_id, "processing", f"generating article (by {principal})", kind="generate")
-    background.add_task(_generate_job, tenant, req.pair_id, request_id, sender, receiver, req.prompt, template)
-    return {"pair_id": req.pair_id, "job_id": request_id, "status": "processing",
-            "poll": f"/generate/{req.pair_id}/{request_id}"}
+
+    store.set_job(tenant, req.pair_id, request_id, "processing",
+                  f"generating article (by {principal})", kind="generate")
+
+    if run_async:                                     # opt-in: don't block, client polls the GET
+        background.add_task(_generate_job, tenant, req.pair_id, request_id,
+                            sender, receiver, req.prompt, template)
+        return JSONResponse(status_code=202, content={
+            "pair_id": req.pair_id, "job_id": request_id, "status": "processing",
+            "poll": f"/generate/{req.pair_id}/{request_id}"})
+
+    # default: synchronous — run inline and return the article (the brief's contract)
+    try:
+        result = _run_and_store(tenant, req.pair_id, request_id, sender, receiver, req.prompt, template)
+    except LLMNotConfigured as e:
+        store.set_job(tenant, req.pair_id, request_id, "error", str(e))
+        raise HTTPException(status_code=503, detail=str(e))
+    except LLMError as e:
+        store.set_job(tenant, req.pair_id, request_id, "error", f"model error: {e}")
+        raise HTTPException(status_code=502, detail=f"model error: {e}")
+    except Exception as e:
+        log.exception("generation failed")
+        store.set_job(tenant, req.pair_id, request_id, "error", f"{type(e).__name__}: {e}")
+        raise HTTPException(status_code=500, detail=f"generation failed: {type(e).__name__}: {e}")
+    return JSONResponse(result.model_dump())
 
 
 @app.get("/generate/{pair_id}/{job_id}")
 def generate_status(pair_id: str, job_id: str, tenant: str = Depends(get_tenant),
                     principal: str = Depends(require_identity)):
-    """Poll a generation job. When done, returns the full ArticleJSON under `result`."""
+    """Optional: poll an async (?async=true) job, or re-fetch a past generation by id.
+    When done, returns the full ArticleJSON under `result`. The synchronous default path
+    returns the article directly from POST /generate and never needs this."""
     job = store.get_job(tenant, pair_id, job_id)
     if not job:
         raise HTTPException(status_code=404, detail="job not found")

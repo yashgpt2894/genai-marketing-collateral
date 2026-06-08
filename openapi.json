@@ -37,250 +37,6 @@
         }
       }
     },
-    "/templates": {
-      "get": {
-        "summary": "Templates",
-        "description": "Built-in templates plus any this tenant has created.",
-        "operationId": "templates_templates_get",
-        "security": [
-          {
-            "HTTPBearer": []
-          }
-        ],
-        "parameters": [
-          {
-            "name": "x-tenant-id",
-            "in": "header",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "X-Tenant-Id"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/TemplateModel"
-                  },
-                  "title": "Response Templates Templates Get"
-                }
-              }
-            }
-          },
-          "422": {
-            "description": "Validation Error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            }
-          }
-        }
-      },
-      "post": {
-        "summary": "Create Template",
-        "description": "Create a custom layout template (tenant-scoped). It then shows up in GET /templates\nand the UI dropdown, and can be passed as `template_id` to /generate. The body is\nvalidated (unique block ids, min<=max words, hex palette, theme colours in palette).",
-        "operationId": "create_template_templates_post",
-        "security": [
-          {
-            "HTTPBearer": []
-          }
-        ],
-        "parameters": [
-          {
-            "name": "x-tenant-id",
-            "in": "header",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "X-Tenant-Id"
-            }
-          }
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/TemplateModel"
-              }
-            }
-          }
-        },
-        "responses": {
-          "201": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/TemplateModel"
-                }
-              }
-            }
-          },
-          "422": {
-            "description": "Validation Error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/templates/{template_id}": {
-      "put": {
-        "summary": "Update Template",
-        "description": "Replace a custom template (full update). Built-in templates are read-only.",
-        "operationId": "update_template_templates__template_id__put",
-        "security": [
-          {
-            "HTTPBearer": []
-          }
-        ],
-        "parameters": [
-          {
-            "name": "template_id",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "title": "Template Id"
-            }
-          },
-          {
-            "name": "x-tenant-id",
-            "in": "header",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "X-Tenant-Id"
-            }
-          }
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/TemplateModel"
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/TemplateModel"
-                }
-              }
-            }
-          },
-          "422": {
-            "description": "Validation Error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            }
-          }
-        }
-      },
-      "delete": {
-        "summary": "Delete Template",
-        "description": "Delete a custom template. Built-in templates cannot be deleted.",
-        "operationId": "delete_template_templates__template_id__delete",
-        "security": [
-          {
-            "HTTPBearer": []
-          }
-        ],
-        "parameters": [
-          {
-            "name": "template_id",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "title": "Template Id"
-            }
-          },
-          {
-            "name": "x-tenant-id",
-            "in": "header",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "X-Tenant-Id"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {}
-              }
-            }
-          },
-          "422": {
-            "description": "Validation Error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
     "/companies/{pair_id}": {
       "get": {
         "summary": "Get Companies",
@@ -588,7 +344,7 @@
     "/generate": {
       "post": {
         "summary": "Generate",
-        "description": "Accept the job and return a job_id immediately \u2014 never blocks on the model.\nPoll GET /generate/{pair_id}/{job_id} for the result. Send an Idempotency-Key\nheader to make a retried POST return the same job instead of a duplicate.",
+        "description": "Generate the tailored article as structured JSON \u2014 the brief's second endpoint.\n\nDefault (synchronous): runs the pipeline and returns the full ArticleJSON in the\nresponse body (200). This is the contract the brief asks for.\n\n`?async=true`: enqueue the work and return 202 + a poll URL\n(GET /generate/{pair_id}/{job_id}) \u2014 for very long or bursty jobs. Either way, send\nan `Idempotency-Key` header to make a retried POST reuse the same job/result instead\nof creating a duplicate.",
         "operationId": "generate_generate_post",
         "security": [
           {
@@ -596,6 +352,18 @@
           }
         ],
         "parameters": [
+          {
+            "name": "async",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "description": "run in the background and return 202 + a poll URL instead of blocking",
+              "default": false,
+              "title": "Async"
+            },
+            "description": "run in the background and return 202 + a poll URL instead of blocking"
+          },
           {
             "name": "Idempotency-Key",
             "in": "header",
@@ -640,7 +408,7 @@
           }
         },
         "responses": {
-          "202": {
+          "200": {
             "description": "Successful Response",
             "content": {
               "application/json": {
@@ -664,7 +432,7 @@
     "/generate/{pair_id}/{job_id}": {
       "get": {
         "summary": "Generate Status",
-        "description": "Poll a generation job. When done, returns the full ArticleJSON under `result`.",
+        "description": "Optional: poll an async (?async=true) job, or re-fetch a past generation by id.\nWhen done, returns the full ArticleJSON under `result`. The synchronous default path\nreturns the article directly from POST /generate and never needs this.",
         "operationId": "generate_status_generate__pair_id___job_id__get",
         "security": [
           {
@@ -882,76 +650,6 @@
   },
   "components": {
     "schemas": {
-      "BlockSpecModel": {
-        "properties": {
-          "id": {
-            "type": "string",
-            "title": "Id"
-          },
-          "type": {
-            "$ref": "#/components/schemas/BlockType"
-          },
-          "min_words": {
-            "type": "integer",
-            "title": "Min Words"
-          },
-          "max_words": {
-            "type": "integer",
-            "title": "Max Words"
-          },
-          "image_placeholder": {
-            "type": "boolean",
-            "title": "Image Placeholder",
-            "default": false
-          },
-          "theme_color": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Theme Color"
-          },
-          "image_role": {
-            "anyOf": [
-              {
-                "type": "string",
-                "enum": [
-                  "logo",
-                  "photo",
-                  "chart"
-                ]
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Image Role"
-          }
-        },
-        "type": "object",
-        "required": [
-          "id",
-          "type",
-          "min_words",
-          "max_words"
-        ],
-        "title": "BlockSpecModel"
-      },
-      "BlockType": {
-        "type": "string",
-        "enum": [
-          "heading",
-          "subheading",
-          "body",
-          "caption",
-          "cta"
-        ],
-        "title": "BlockType"
-      },
       "Body_upload_documents_companies__pair_id__documents_post": {
         "properties": {
           "role": {
@@ -1275,44 +973,6 @@
           "path"
         ],
         "title": "ImageAsset"
-      },
-      "TemplateModel": {
-        "properties": {
-          "id": {
-            "type": "string",
-            "pattern": "^[a-z0-9][a-z0-9_-]{0,63}$",
-            "title": "Id",
-            "description": "slug id: lowercase letters/digits, '-' or '_'"
-          },
-          "name": {
-            "type": "string",
-            "maxLength": 120,
-            "minLength": 1,
-            "title": "Name"
-          },
-          "blocks": {
-            "items": {
-              "$ref": "#/components/schemas/BlockSpecModel"
-            },
-            "type": "array",
-            "title": "Blocks"
-          },
-          "palette": {
-            "items": {
-              "type": "string"
-            },
-            "type": "array",
-            "title": "Palette"
-          }
-        },
-        "type": "object",
-        "required": [
-          "id",
-          "name",
-          "blocks",
-          "palette"
-        ],
-        "title": "TemplateModel"
       },
       "UploadResponse": {
         "properties": {

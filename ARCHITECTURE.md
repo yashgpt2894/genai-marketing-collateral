@@ -14,14 +14,14 @@ flowchart TB
   CLIENT["curl / thin UI"]
   AUTH["Auth: Google ID token, Bearer<br/>verified per request"]
   CLIENT --> AUTH
-  AUTH --> API["Cloud Run API — FastAPI, stateless<br/>POST /companies/PAIR/documents<br/>POST /generate returns 202 + job_id, then poll"]
+  AUTH --> API["Cloud Run API — FastAPI, stateless<br/>POST /companies/PAIR/documents<br/>POST /generate returns ArticleJSON (synchronous)"]
 
   API -- "upload: PDF to GCS, publish job" --> PS["Pub/Sub + DLQ"]
   PS --> WORK["Parse worker — Cloud Run push<br/>PyMuPDF assets + Gemini 2.5 Flash meaning"]
   WORK --> FS[("Firestore: briefs, jobs, outputs")]
   WORK --> GCS[("Cloud Storage: PDFs, assets, CMEK")]
 
-  API -- "generate, async job" --> GEN["Deterministic pipeline<br/>assemble, draft, map, validate, repair<br/>+ faithfulness + token/cost"]
+  API -- "generate (synchronous)" --> GEN["Deterministic pipeline<br/>assemble, draft, map, validate, repair<br/>+ faithfulness + token/cost"]
   GEN -- "Vertex AI service account, no key" --> MODEL["Gemini 2.5 Pro / Flash"]
   GEN --> FS
 
@@ -43,10 +43,11 @@ Secret Manager.
    **Gemini 2.5 Flash** (multimodal meaning) → typed `CompanyBrief` in Firestore. **Document AI**
    (layout/tables/OCR, +HITL on low-confidence) is the managed at-scale swap.
    Idempotent on `(role, filename)`; retries + dead-letter queue. Returns a `job_id`.
-2. **Generate** `POST /generate {pair_id, prompt, template_id}` (auth) → **202 + `job_id`**,
-   runs off the request path → grounded, cited draft → mapped to template → constraints
-   validated **in code** → repair loop → `ArticleJSON` (+ citations, confidence, **token/cost**).
-   Poll `GET /generate/{pair}/{job_id}`. An `Idempotency-Key` header de-dupes retries.
+2. **Generate** `POST /generate {pair_id, prompt, template_id}` (auth) → grounded, cited draft →
+   mapped to template → constraints validated **in code** → repair loop → returns **`ArticleJSON`**
+   directly (synchronous — the brief's contract; + citations, confidence, **token/cost**).
+   `?async=true` instead returns **202 + `job_id`** to poll at `GET /generate/{pair}/{job_id}`, for
+   long/bursty jobs. An `Idempotency-Key` header de-dupes retries.
 
 *(No publish/approval step — the API returns a reviewable draft; the human review happens
 where the JSON is consumed. A formal approval gate enters only if we add a publish action.)*
@@ -93,8 +94,8 @@ Mapped to ML6's **Safe & Secure / Responsible AI** pillars — implemented vs th
   ADC; the SA holds only `datastore.user`, `aiplatform.user`, bucket `objectAdmin`, `pubsub.publisher`).
   Secrets stay out of git (`.env` git-ignored, `.env.example` only).
 - **Encryption · residency · retention.** GCS is **CMEK**-encrypted; storage (GCS + Firestore) is in
-  **EU `europe-west1`**; a bucket lifecycle rule deletes objects after 365 days; `DELETE /assets/{…}` and
-  `DELETE /templates/{…}` give explicit removal.
+  **EU `europe-west1`**; a bucket lifecycle rule deletes objects after 365 days; `DELETE /assets/{…}`
+  gives explicit removal.
 - **Reproducibility + cost.** Every output stamps the prompt / template / model version and token + USD cost.
 
 **Production-hardening posture (decided, not yet provisioned)**
@@ -118,7 +119,7 @@ the JSON is consumed — a formal gate would only enter with a publish/send acti
 | Async parse | **Pub/Sub** + **Cloud Run** push worker | decoupled, idempotent, retried + DLQ |
 | Parsing | **PyMuPDF** + **Gemini 2.5 Flash** (Document AI = managed scale swap) | multimodal meaning + images classified by shape (logo/photo/chart) |
 | Generation | deterministic pipeline on Cloud Run | assemble → draft → map → validate → repair |
-| Templates | built-in (code) + **custom CRUD via `/templates`** (POST/PUT/DELETE, Firestore, tenant-scoped) | the hard layout contract |
+| Templates | built-in (code), selected via `template_id` on `/generate` | the hard layout contract |
 | Images | **role-based selection** (logo/photo/chart slots) | best extracted image per slot — sender-first, no reuse, empty if none |
 | Model | **Vertex AI** — Gemini 2.5 Pro / Flash | via the Cloud Run service account (no API key) |
 | Retrieval | long-context + (prod) context caching; structured facts in Firestore | bounded 2-company corpus |
@@ -138,11 +139,9 @@ the JSON is consumed — a formal gate would only enter with a publish/send acti
 |---|---|---|---|
 | `POST /companies/{pair}/documents` | Bearer | multipart: `role`, `files[]` (PDF) | `202` `{job_id}` |
 | `GET  /jobs/{pair}` · `GET /jobs/{pair}/{job}` | Bearer | list: `?type` `?status` `?limit` | jobs for a pair (parse + generate), newest-first · one job |
-| `POST /generate` | Bearer | `{pair_id, prompt, template_id}` · `Idempotency-Key?` | `202` `{job_id, poll}` |
-| `GET  /generate/{pair}/{job}` | Bearer | — | `{status, result: ArticleJSON}` |
-| `GET  /companies/{pair}` · `GET /templates` · `GET /assets/{pair}/{id}` | Bearer | — | briefs · templates · image |
-| `POST /templates` | Bearer | `TemplateModel` (id, name, blocks[], palette[]) | `201` validated template (tenant-scoped) |
-| `PUT /templates/{id}` · `DELETE /templates/{id}` | Bearer | `TemplateModel` (PUT) | edit / delete a custom template (built-ins read-only) |
+| `POST /generate` | Bearer | `{pair_id, prompt, template_id}` · `?async` · `Idempotency-Key?` | **`ArticleJSON`** (synchronous); `?async=true` → `202` `{job_id, poll}` |
+| `GET  /generate/{pair}/{job}` | Bearer | — | (optional) poll async job / re-fetch a past result: `{status, result: ArticleJSON}` |
+| `GET  /companies/{pair}` · `GET /assets/{pair}/{id}` | Bearer | — | briefs · image |
 | `DELETE /assets/{pair}/{id}` | Bearer | — | delete an extracted asset |
 | `GET  /health` · `/healthz` · `GET /` | public | — | liveness · UI |
 | `POST /internal/parse` | OIDC (Pub/Sub push SA) | base64 push envelope | the async parse worker; not a public route |
@@ -152,7 +151,7 @@ Swagger UI at `/docs`), where the `HTTPBearer` security scheme is attached to ev
 
 **Spec artifacts in the repo:** a committed snapshot lives in **`openapi.json`**, and
 **`postman_collection.json`** imports straight into Postman — base URL preset, Bearer auth wired
-(for `AUTH_MODE=google`), and a test script that auto-captures `job_id` so the poll request just runs.
+(for `AUTH_MODE=google`); the Generate request returns the article directly, with an optional async-poll request alongside.
 Postman can also import `openapi.json` (or the live `/openapi.json`) to generate a collection directly.
 
 ---
@@ -168,7 +167,6 @@ another's). A **pair** groups one `sender` + one `receiver`; reusing a `pair_id`
 tenants/{tenant}/pairs/{pair}/briefs/{sender|receiver}   CompanyBrief (source-tagged facts)
 tenants/{tenant}/pairs/{pair}/jobs/{job_id}              {status, message, kind, created_at, updated_at}
 tenants/{tenant}/pairs/{pair}/outputs/{request_id}       ArticleJSON  (request_id == its job_id)
-tenants/{tenant}/templates/{id}                          custom TemplateModel
 ```
 **Cloud Storage** (blobs) — bucket `…-collateral`, CMEK:
 ```
@@ -186,12 +184,14 @@ generate job links straight to its `ArticleJSON` because the output reuses the j
 - **Status codes:** `401` missing/invalid token · `403` IAM (no `run.invoker`) · `404` unknown id ·
   `409` briefs not ready / id conflict (built-in or duplicate) · `413` upload over `MAX_UPLOAD_MB`
   (default 10 MB) · `422` invalid body (Pydantic + template validation) · `503` model not configured.
-- **Idempotency:** an `Idempotency-Key` header on `/generate` makes a retried POST return the same job;
-  uploads are idempotent per `(role, filename)`.
+- **Idempotency:** an `Idempotency-Key` header on `/generate` makes a retried POST reuse the same result
+  (no duplicate job); uploads are idempotent per `(role, filename)`.
 - **Fail-open add-ons:** the result cache and the metrics export never break a request — a Redis/BigQuery
   outage degrades to "no cache" / "no row", not a `5xx`.
-- **Scaling:** Cloud Run scales **0 → 10** instances; the heavy work (parse, generate) runs **off the
-  request path** (Pub/Sub worker + the async job), so request latency is bounded and bursts queue.
+- **Scaling:** Cloud Run scales **0 → 10** instances. **Parsing** runs **off the request path** (Pub/Sub
+  worker), so uploads return immediately and bursts queue. **Generation** is synchronous by default (the
+  request holds the model call — Cloud Run `--timeout 600`); `?async=true` moves it off the request path
+  too, for long or bursty jobs.
 
 ---
 

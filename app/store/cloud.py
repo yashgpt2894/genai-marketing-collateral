@@ -17,7 +17,7 @@ from datetime import datetime, timezone
 from typing import Any, Optional
 
 from app.config import Settings, get_settings
-from app.schemas import ArticleJSON, CompanyBrief, TemplateModel
+from app.schemas import ArticleJSON, CompanyBrief
 from app.store.base import content_type_for
 
 _SEG = re.compile(r"[^a-zA-Z0-9_\-.]")
@@ -141,23 +141,3 @@ class CloudStore:
     def load_output(self, tenant: str, pair_id: str, request_id: str) -> Optional[ArticleJSON]:
         snap = self._coll(tenant, pair_id, "outputs").document(_seg(request_id)).get()
         return ArticleJSON.model_validate(snap.to_dict()) if snap.exists else None
-
-    # -- custom templates (tenant-scoped) --------------------------------------
-    def _templates(self, tenant: str) -> Any:
-        return self._fs.collection("tenants").document(_seg(tenant)).collection("templates")
-
-    def save_template(self, tenant: str, template: TemplateModel) -> None:
-        self._templates(tenant).document(_seg(template.id)).set(template.model_dump())
-
-    def list_templates(self, tenant: str) -> list[TemplateModel]:
-        return [TemplateModel.model_validate(d.to_dict()) for d in self._templates(tenant).stream()]
-
-    def load_template(self, tenant: str, template_id: str) -> Optional[TemplateModel]:
-        snap = self._templates(tenant).document(_seg(template_id)).get()
-        return TemplateModel.model_validate(snap.to_dict()) if snap.exists else None
-
-    def delete_template(self, tenant: str, template_id: str) -> bool:
-        doc = self._templates(tenant).document(_seg(template_id))
-        existed = doc.get().exists
-        doc.delete()
-        return existed
