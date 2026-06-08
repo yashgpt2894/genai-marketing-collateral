@@ -175,7 +175,7 @@ box(s, 0.85, 2.15, 2.5, 0.8, fill=INK2, line="2C3647", text="Client / curl", sub
 box(s, 4.0, 2.15, 5.2, 0.8, fill="0B2E2A", line=TEAL, text="Cloud Run · API (FastAPI)", sub="auth · stateless · scale-to-zero", size=13, tcolor=WHITE, scolor=ICE)
 arrow(s, 3.4, 2.55, 3.95, 2.55, color=TEAL)
 # upload branch
-box(s, 4.0, 3.4, 5.2, 0.85, fill=INK2, line="2C3647", text="Pub/Sub → parse worker", sub="Document AI + Gemini 2.5 Flash", size=12, tcolor=WHITE, scolor=ICE)
+box(s, 4.0, 3.4, 5.2, 0.85, fill=INK2, line="2C3647", text="Pub/Sub → parse worker", sub="PyMuPDF + Gemini 2.5 Flash", size=12, tcolor=WHITE, scolor=ICE)
 arrow(s, 6.6, 2.95, 6.6, 3.38, color=TEAL)
 # generate branch
 box(s, 9.7, 2.15, 2.8, 0.85, fill=INK2, line="2C3647", text="Vertex AI", sub="Gemini 2.5 Pro / Flash", size=12, tcolor=WHITE, scolor=ICE)
@@ -209,7 +209,7 @@ arrow(s, 9.58, 4.35, 9.22, 3.92, color=AMBER, width=1.5)
 sp = s.shapes.add_shape(MSO_SHAPE.ROUNDED_RECTANGLE, In(0.78), In(5.82), In(11.75), In(0.86))
 sp.fill.background(); sp.line.color.rgb = rgb(AMBER); sp.line.width = Pt(1.25); sp.shadow.inherit = False
 _txt(s, "SECURITY SPINE", 1.0, 5.92, 3, 0.3, size=10, color=AMBER, bold=True, font=MONO, caps=True)
-_txt(s, "Google ID-token auth + IAM   ·   Model Armor   ·   per-tenant CMEK   ·   EU residency   ·   Pub/Sub DLQ   ·   Terraform (infra/)",
+_txt(s, "Google ID-token auth + IAM   ·   CMEK   ·   EU-region storage   ·   Pub/Sub DLQ   ·   Terraform (infra/)",
      1.0, 6.26, 11.45, 0.5, size=11, color="9FB0C8", font=MONO, spacing=1.12)
 footer(s, 5, dark=True)
 
@@ -226,7 +226,6 @@ for i, (t, sub) in enumerate(fc):
     x += w + gap
 _txt(s, "Grounding reduces hallucination — it doesn't eliminate it. So citations stay, and a human approves before anything is mailed.",
      0.85, 4.55, 11.6, 0.6, size=15, color=SLATE, spacing=1.15)
-chip(s, 0.85, 5.5, 4.6, "live run: 100% grounded · 5/5 within limits", color=TEAL)
 footer(s, 6)
 
 # ── 7 · layout limits ─────────────────────────────────────────────────────────
@@ -255,7 +254,7 @@ eyebrow(s, "SECURITY & SCALE", 0.85, 0.55, TEAL)
 title(s, "Secure by default, scales on its own", 0.82, 0.95, 11.6, WHITE)
 box(s, 0.85, 2.3, 5.55, 3.4, fill=INK2, line="2C3647")
 _txt(s, "SECURITY", 1.15, 2.55, 5, 0.4, size=12, color=TEAL, bold=True, font=MONO)
-_txt(s, "•  Google ID-token auth + Cloud Run IAM (defense in depth)\n•  PDFs are untrusted DATA — injection guard + Model Armor\n•  per-tenant CMEK · EU residency · VPC-SC · Secret Manager\n•  no tools / side-effects → tiny blast radius",
+_txt(s, "•  Google ID-token auth + Cloud Run IAM (defense in depth)\n•  PDFs are untrusted input — used as grounding data, not instructions\n•  CMEK-encrypted storage · EU region (europe-west1) · least-privilege IAM\n•  no tools / side-effects → tiny blast radius",
      1.15, 3.15, 5.0, 2.3, size=13.5, color=ICE, spacing=1.35)
 box(s, 6.95, 2.3, 5.55, 3.4, fill=INK2, line="2C3647")
 _txt(s, "SCALE", 7.25, 2.55, 5, 0.4, size=12, color=TEAL, bold=True, font=MONO)
@@ -276,8 +275,7 @@ b = s.shapes.add_shape(MSO_SHAPE.ROUNDED_RECTANGLE, In(0.85), In(2.15), In(7.1),
 b.fill.solid(); b.fill.fore_color.rgb = rgb("0A0E16"); b.line.color.rgb = rgb("2C3647"); b.shadow.inherit = False
 _txt(s, term, 1.05, 2.35, 6.8, 2.4, size=11, color="9FE8DF", font=MONO, spacing=1.25)
 # metrics callouts
-metrics = [("gemini-2.5-pro", "writer model"), ("$0.01", "per brochure"),
-           ("100%", "grounded"), ("5 / 5", "within limits")]
+metrics = [("gemini-2.5-pro", "writer model"), ("$0.01", "per brochure")]
 y = 2.15
 for t, sub in metrics:
     box(s, 8.35, y, 4.15, 0.72, fill=INK2, line="2C3647", text=t, sub=sub, size=15, tcolor=TEAL, scolor=ICE)
