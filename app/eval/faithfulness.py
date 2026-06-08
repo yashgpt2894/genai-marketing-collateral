@@ -21,7 +21,7 @@ from typing import Callable, Optional
 from app.config import get_settings
 from app.constraints_core import BlockType, FilledBlock
 from app.generate.context import _render_brief
-from app.llm.gemini import INJECTION_GUARD, GeminiClient
+from app.llm.gemini import INJECTION_GUARD, GeminiClient, LLMError
 from app.schemas import CompanyBrief, FaithfulnessReport
 
 log = logging.getLogger("collateral.eval")
@@ -54,9 +54,15 @@ def _gemini_judge(llm: GeminiClient, grounding: str) -> JudgeFn:
             )
             raw = raw.strip().lstrip("`json").rstrip("`").strip()
             return bool(json.loads(raw).get("supported", False))
-        except Exception as e:  # judge failure shouldn't crash generation
-            log.warning("faithfulness judge failed, treating block as unverified: %s", e)
-            return True  # fail-open on the judge, but flag via checked=False upstream if desired
+        except LLMError:
+            raise  # already the right type — surfaces as a clean 502 upstream
+        except Exception as e:
+            # Fail CLOSED. The faithfulness judge is the proof of factual correctness, so a
+            # broken checker must never silently pass a claim or inflate the score. Surface it
+            # as an LLMError so generation errors out (502) rather than returning a result whose
+            # faithfulness number can't be trusted.
+            log.warning("faithfulness judge failed, erroring out generation: %s", e)
+            raise LLMError(f"faithfulness judge failed: {e}") from e
 
     return judge
 

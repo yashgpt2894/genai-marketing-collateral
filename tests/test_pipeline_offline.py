@@ -50,6 +50,10 @@ class FakeLLM:
         ])
 
     def generate_text(self, *, model, contents, system_instruction=None, temperature=0.4, max_output_tokens=None):
+        # the faithfulness judge calls generate_text with the fact-checker system prompt and
+        # expects a JSON verdict back; anything else is the "repair" step.
+        if system_instruction and "fact-checker" in system_instruction:
+            return '{"supported": true, "reason": "supported by grounding"}'
         # "repair": return a body comfortably within the 55-95 word window
         return " ".join(["word"] * 70)
 
@@ -123,7 +127,28 @@ def test_pipeline_flags_dangling_citation():
     assert any("dangling" in u for u in result.faithfulness.unsupported_claims)
 
 
+def test_faithfulness_judge_fails_closed():
+    """A broken judge must ERROR the generation out (LLMError), never silently pass a claim
+    or inflate the faithfulness score. Uses the real _gemini_judge path (no injected judge)."""
+    from app.llm.gemini import LLMError
+
+    class BadJudgeLLM(FakeLLM):
+        def generate_text(self, *, model=None, contents=None, system_instruction=None, **kw):
+            if system_instruction and "fact-checker" in system_instruction:
+                return "not json at all"            # judge verdict unparseable -> must fail closed
+            return " ".join(["word"] * 70)          # repair step still fine
+
+    with pytest.raises(LLMError):
+        run_generation(
+            pair_id="acme__globex3", sender=_brief("sender", "send"),
+            receiver=_brief("receiver", "recv"), prompt="x",
+            template=ONE_PAGER_V1, request_id="testreq003",
+            llm=BadJudgeLLM(),                       # no injected judge -> exercises _gemini_judge
+        )
+
+
 if __name__ == "__main__":
     test_pipeline_repairs_and_reports()
     test_pipeline_flags_dangling_citation()
+    test_faithfulness_judge_fails_closed()
     print("offline pipeline tests passed.")
