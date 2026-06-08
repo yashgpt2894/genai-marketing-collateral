@@ -122,29 +122,33 @@ footer(s, 2)
 
 # ── 3 · solution = two endpoints + flow ───────────────────────────────────────
 s = sld(WHITE)
-eyebrow(s, "THE SOLUTION · THE API IS THE PRODUCT")
+eyebrow(s, "THE SOLUTION · END-TO-END FLOW")
 title(s, "Two endpoints, one deterministic flow")
-# upload row
-_txt(s, "POST /companies/{pair}/documents", 0.85, 2.05, 6, 0.3, size=11, color=TEAL, bold=True, font=MONO)
-up = [("Upload PDFs", "sender + receiver"), ("Parse (async)", "Pub/Sub → worker"),
-      ("CompanyBrief", "source-tagged facts"), ("Store", "Firestore + GCS")]
-x = 0.85; w = 2.66; gap = 0.3
-for i, (t, sub) in enumerate(up):
-    box(s, x, 2.4, w, 1.1, fill=LIGHT, text=t, sub=sub, size=12)
-    if i < 3: arrow(s, x + w + 0.02, 2.95, x + w + gap - 0.02, 2.95, color=SLATE, width=1.4)
+# one continuous pipeline: input PDFs -> ... -> rendered brochure (the two POSTs marked along it)
+flow = [
+    ("Two PDFs", "sender + receiver", LINE),
+    ("Parse", "PyMuPDF + Gemini", TEAL),
+    ("Briefs", "cited facts", LINE),
+    ("Generate", "draft → verify", TEAL),
+    ("ArticleJSON", "layout-valid", LINE),
+    ("Brochure", "render + review", LINE),
+]
+x = 0.85; w = 1.72; gap = 0.26; ytop = 3.05; h = 1.2; ymid = ytop + h / 2
+xs = []
+for i, (t, sub, ln) in enumerate(flow):
+    xs.append(x)
+    box(s, x, ytop, w, h, fill=LIGHT, line=ln, text=t, sub=sub, size=12)
+    if i < len(flow) - 1:
+        arrow(s, x + w + 0.01, ymid, x + w + gap - 0.01, ymid, color=SLATE, width=1.6)
     x += w + gap
-# generate row
-_txt(s, "POST /generate  →  200  ArticleJSON (sync)", 0.85, 3.95, 7, 0.3, size=11, color=TEAL, bold=True, font=MONO)
-gen = [("Assemble", "grounded context"), ("Draft", "cited, Gemini Pro"),
-       ("Map + validate", "limits in code"), ("ArticleJSON", "+ cost, confidence")]
-x = 0.85
-for i, (t, sub) in enumerate(gen):
-    box(s, x, 4.3, w, 1.1, fill=LIGHT, text=t, sub=sub, size=12)
-    if i < 3: arrow(s, x + w + 0.02, 4.85, x + w + gap - 0.02, 4.85, color=SLATE, width=1.4)
-    x += w + gap
-chip(s, 0.85, 5.85, 3.0, "auth: Bearer ID token")
-chip(s, 4.0, 5.85, 3.4, "structured JSON, schema-valid")
-chip(s, 7.55, 5.85, 3.5, "every word limit enforced in code")
+# the two API endpoints, marked along the single flow
+_txt(s, "POST /…/documents", xs[1] - 0.4, ytop - 0.46, w + 0.8, 0.3, size=10, color=TEAL, bold=True, font=MONO, align=PP_ALIGN.CENTER)
+_txt(s, "POST /generate → 200", xs[3] - 0.5, ytop - 0.46, w + 1.0, 0.3, size=10, color=TEAL, bold=True, font=MONO, align=PP_ALIGN.CENTER)
+_txt(s, "One continuous pipeline — input PDFs → grounded, cited ArticleJSON → rendered brochure. Deterministic, typed, fully traceable.",
+     0.85, 4.55, 11.6, 0.6, size=14, color=SLATE, spacing=1.15)
+chip(s, 0.85, 5.45, 3.0, "auth: Bearer ID token")
+chip(s, 4.0, 5.45, 3.4, "structured JSON, schema-valid")
+chip(s, 7.55, 5.45, 3.5, "every word limit enforced in code")
 footer(s, 3)
 
 # ── 4 · orchestration (the explicit requirement) ──────────────────────────────
